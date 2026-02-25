@@ -26,6 +26,15 @@ const redIcon = new L.Icon({
   className: 'unrepaired-marker'
 });
 
+const blueIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 function parseTaiwanDateTime(twStr: string) {
   if (!twStr) return null;
   const parts = twStr.trim().split(' ');
@@ -38,14 +47,20 @@ function parseTaiwanDateTime(twStr: string) {
   return new Date(year, month - 1, day, hour, minute, second);
 }
 
-// Component to handle map actions like flying to a location
-const MapController = ({ target }: { target: [number, number] | null }) => {
+// Component to handle map actions like flying to a location or fitting bounds
+const MapController = ({ target, bounds }: { target: [number, number] | null, bounds: L.LatLngBoundsExpression | null }) => {
   const map = useMap();
   useEffect(() => {
     if (target) {
       map.flyTo(target, 18, { duration: 1.5 });
     }
   }, [target, map]);
+
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [bounds, map]);
   return null;
 };
 
@@ -129,6 +144,12 @@ export default function StreetLightMap() {
   const repairedLights = useMemo(() =>
     lights.filter(l => !l.isUnrepaired),
     [lights]);
+
+  const mapBounds = useMemo(() => {
+    if (lights.length === 0) return null;
+    const bounds = L.latLngBounds(lights.map(l => [l.lat, l.lng]));
+    return bounds;
+  }, [lights]);
 
   const handleSearch = () => {
     const light = lights.find(l => l.id === searchId);
@@ -247,15 +268,15 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center gap-1 bg-blue-600 p-2 rounded-2xl shadow-2xl scale-[0.8] origin-bottom-right border border-blue-400">
+      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center gap-1 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12),0_4px_12px_rgba(59,130,246,0.1)] scale-[0.8] origin-bottom-right border border-white/40">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-          className="bg-white text-blue-600 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-all w-full justify-center"
+          className="bg-sky-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-sky-600 transition-all w-full justify-center shadow-sm"
         >
           <Info className="w-4 h-4" />
           路燈通報系統
         </button>
-        <div className="text-[10px] text-white/90 font-bold tracking-wide py-1">
+        <div className="text-[10px] text-slate-400 font-bold tracking-wide py-1">
           02/25/2026 W.K Design
         </div>
       </div>
@@ -268,7 +289,7 @@ export default function StreetLightMap() {
         // @ts-ignore
         ref={mapRef}
       >
-        <MapController target={targetLocation} />
+        <MapController target={targetLocation} bounds={mapBounds} />
 
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="街道地圖 (OSM)">
@@ -344,6 +365,7 @@ export default function StreetLightMap() {
             <Marker
               key={light.id}
               position={[light.lat, light.lng]}
+              icon={blueIcon}
             >
               <Popup>
                 <div className="p-1 min-w-[150px]">
