@@ -1,0 +1,23 @@
+export interface StreetLightLocation {
+  "原路燈號碼": string;
+  "緯度Latitude": string;
+  "經度Longitude": string;
+  [key: string]: any;
+}
+
+export interface RepairRecord {
+  "路燈編號": string;
+  "通報時間": string;
+  "維修情形": string;
+  "故障情形": string;
+  [key: string]: any;
+}
+
+export interface StreetLightData extends StreetLightLocation {
+  id: string;
+  isUnrepaired: boolean;
+  fault: string;
+  reportDate?: Date;
+  lat: number;
+  lng: number;
+}
