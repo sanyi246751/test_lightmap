@@ -328,9 +328,9 @@ export default function StreetLightMap() {
           >
             <Popup>
               <div className="p-1 min-w-[150px]">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center justify-center gap-2 mb-2">
                   <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded-full">⚠️ 未查修</span>
-                  <span className="font-bold text-slate-800">{light.id}</span>
+                  <span className="font-bold text-slate-800">編號：{light.id}</span>
                 </div>
                 <div className="space-y-2 text-xs text-slate-600">
                   <p><span className="font-semibold">故障情形：</span>{light.fault || "未註明"}</p>
@@ -369,8 +369,8 @@ export default function StreetLightMap() {
             >
               <Popup>
                 <div className="p-1 min-w-[150px]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-bold text-slate-800">{light.id}</span>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="font-bold text-slate-800">編號：{light.id}</span>
                   </div>
                   <div className="space-y-2 text-xs text-slate-600">
                     <a
