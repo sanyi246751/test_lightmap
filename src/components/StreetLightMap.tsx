@@ -219,10 +219,10 @@ export default function StreetLightMap() {
 
 
       {/* Unrepaired List Panel (Permanent) */}
-      <div className="absolute bottom-4 left-4 z-[1000] w-72 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col">
+      <div className="absolute bottom-4 left-4 z-[1000] w-72 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-500" />
+          <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
             未查修清單 ({unrepairedLights.length})
           </h3>
         </div>
@@ -233,15 +233,15 @@ export default function StreetLightMap() {
             <ul className="space-y-1">
               {unrepairedLights.map(light => (
                 <li key={light.id} className="group">
-                  <button
-                    onClick={() => {
-                      setTargetLocation([light.lat, light.lng]);
-                    }}
-                    className="w-full text-left p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
-                  >
+                  <div className="w-full text-left p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-indigo-600">{light.id}</span>
-                      <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">點擊定位</span>
+                      <button
+                        onClick={() => setTargetLocation([light.lat, light.lng])}
+                        className="font-bold text-indigo-600 text-xl hover:text-indigo-800 transition-colors"
+                      >
+                        {light.id}
+                      </button>
+                      <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">點號碼定位</span>
                     </div>
                     <div className="text-xs text-slate-600">
                       {getReportDiffText(light.reportDate)}
@@ -251,7 +251,7 @@ export default function StreetLightMap() {
                         故障：{light.fault}
                       </div>
                     )}
-                  </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -259,16 +259,16 @@ export default function StreetLightMap() {
         </div>
       </div>
 
-      {/* Report Button */}
-      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2">
+      {/* Report Button & Copyright */}
+      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center gap-2 scale-[0.7] origin-bottom-right">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-          className="bg-emerald-600 text-white shadow-lg rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all"
+          className="bg-emerald-600 text-white shadow-lg rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all w-full justify-center"
         >
           <Info className="w-4 h-4" />
           路燈通報系統
         </button>
-        <div className="bg-white/80 backdrop-blur px-3 py-1 rounded-lg text-[10px] text-slate-500 font-medium shadow-sm border border-white/20">
+        <div className="bg-white/80 backdrop-blur px-3 py-1 rounded-lg text-[10px] text-slate-500 font-medium shadow-sm border border-white/20 w-fit">
           02/25/2026 W.K Design
         </div>
       </div>
