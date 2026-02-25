@@ -110,6 +110,8 @@ export default function StreetLightMap() {
           .filter(Boolean) as StreetLightData[];
 
         setLights(processedLights);
+        // Load data and set view to default center
+        setTargetLocation([DEFAULT_CENTER[0], DEFAULT_CENTER[1]]);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -202,19 +204,6 @@ export default function StreetLightMap() {
 
       {/* Map Controls */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
-
-        <button
-          onClick={() => setShowTooltips(!showTooltips)}
-          className="bg-white/90 backdrop-blur shadow-md rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 border border-white/20 hover:bg-white transition-all flex items-center gap-2"
-        >
-          <Info className="w-4 h-4" />
-          {showTooltips ? "隱藏編號" : "顯示編號"}
-        </button>
-
-        <div className="bg-white/90 backdrop-blur shadow-md rounded-xl px-4 py-2 text-xs font-bold text-red-600 border border-white/20 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" />
-          未查修：{unrepairedLights.length}
-        </div>
       </div>
 
 
@@ -233,25 +222,23 @@ export default function StreetLightMap() {
             <ul className="space-y-1">
               {unrepairedLights.map(light => (
                 <li key={light.id} className="group">
-                  <div className="w-full text-left p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1">
+                  <button
+                    onClick={() => setTargetLocation([light.lat, light.lng])}
+                    className="w-full text-left p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
+                  >
                     <div className="flex justify-between items-center">
-                      <button
-                        onClick={() => setTargetLocation([light.lat, light.lng])}
-                        className="font-bold text-indigo-600 text-xl hover:text-indigo-800 transition-colors"
-                      >
-                        {light.id}
-                      </button>
-                      <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">點號碼定位</span>
+                      <span className="font-bold text-indigo-600 text-2xl">{light.id}</span>
+                      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">點選定位</span>
                     </div>
-                    <div className="text-xs text-slate-600">
+                    <div className="text-sm text-slate-600">
                       {getReportDiffText(light.reportDate)}
                     </div>
                     {light.fault && (
-                      <div className="text-[10px] text-red-500 font-medium mt-1 line-clamp-1">
+                      <div className="text-xs text-red-500 font-medium mt-1 line-clamp-1">
                         故障：{light.fault}
                       </div>
                     )}
-                  </div>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -260,15 +247,15 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center gap-2 scale-[0.7] origin-bottom-right">
+      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center gap-1 bg-blue-600 p-2 rounded-2xl shadow-2xl scale-[0.8] origin-bottom-right border border-blue-400">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-          className="bg-emerald-600 text-white shadow-lg rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all w-full justify-center"
+          className="bg-white text-blue-600 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-blue-50 transition-all w-full justify-center"
         >
           <Info className="w-4 h-4" />
           路燈通報系統
         </button>
-        <div className="bg-white/80 backdrop-blur px-3 py-1 rounded-lg text-[10px] text-slate-500 font-medium shadow-sm border border-white/20 w-fit">
+        <div className="text-[10px] text-white/90 font-bold tracking-wide py-1">
           02/25/2026 W.K Design
         </div>
       </div>
@@ -322,7 +309,7 @@ export default function StreetLightMap() {
               <div className="p-1 min-w-[150px]">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded-full">⚠️ 未查修</span>
-                  <span className="font-bold text-slate-800">#{light.id}</span>
+                  <span className="font-bold text-slate-800">{light.id}</span>
                 </div>
                 <div className="space-y-2 text-xs text-slate-600">
                   <p><span className="font-semibold">故障情形：</span>{light.fault || "未註明"}</p>
@@ -340,7 +327,7 @@ export default function StreetLightMap() {
               </div>
             </Popup>
             {showTooltips && (
-              <Tooltip permanent direction="top" offset={[0, -10]} opacity={0.9}>
+              <Tooltip permanent direction="top" offset={[0, -32]} opacity={0.9}>
                 {light.id}
               </Tooltip>
             )}
@@ -361,8 +348,7 @@ export default function StreetLightMap() {
               <Popup>
                 <div className="p-1 min-w-[150px]">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-600 text-[10px] font-bold rounded-full">✓ 已查修</span>
-                    <span className="font-bold text-slate-800">#{light.id}</span>
+                    <span className="font-bold text-slate-800">{light.id}</span>
                   </div>
                   <div className="space-y-2 text-xs text-slate-600">
                     <a
@@ -378,7 +364,7 @@ export default function StreetLightMap() {
                 </div>
               </Popup>
               {showTooltips && (
-                <Tooltip permanent direction="top" offset={[0, -10]} opacity={0.9}>
+                <Tooltip permanent direction="top" offset={[0, -32]} opacity={0.9}>
                   {light.id}
                 </Tooltip>
               )}
