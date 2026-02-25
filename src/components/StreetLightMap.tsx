@@ -202,19 +202,6 @@ export default function StreetLightMap() {
 
       {/* Map Controls */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
-        <button
-          onClick={() => {
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition((position) => {
-                setTargetLocation([position.coords.latitude, position.coords.longitude]);
-              });
-            }
-          }}
-          className="bg-white/90 backdrop-blur shadow-md rounded-xl p-2 text-slate-700 border border-white/20 hover:bg-white transition-all flex items-center justify-center"
-          title="我的位置"
-        >
-          <Navigation className="w-5 h-5" />
-        </button>
 
         <button
           onClick={() => setShowTooltips(!showTooltips)}
@@ -230,70 +217,47 @@ export default function StreetLightMap() {
         </div>
       </div>
 
-      {/* Unrepaired List Toggle */}
-      <div className="absolute bottom-4 left-4 z-[1000]">
-        <button
-          onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
-          className="bg-indigo-600 text-white shadow-lg rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all"
-        >
-          <AlertTriangle className="w-4 h-4" />
-          未查修清單
-        </button>
-      </div>
 
-      {/* Unrepaired List Panel */}
-      <AnimatePresence>
-        {unrepairedListOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="absolute bottom-20 left-4 z-[1000] w-72 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col"
-          >
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-500" />
-                未查修清單 ({unrepairedLights.length})
-              </h3>
-              <button onClick={() => setUnrepairedListOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-2">
-              {unrepairedLights.length === 0 ? (
-                <p className="text-center py-8 text-slate-400 text-sm italic">目前無未查修項目</p>
-              ) : (
-                <ul className="space-y-1">
-                  {unrepairedLights.map(light => (
-                    <li key={light.id} className="group">
-                      <button
-                        onClick={() => {
-                          setTargetLocation([light.lat, light.lng]);
-                          setUnrepairedListOpen(false);
-                        }}
-                        className="w-full text-left p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-indigo-600">{light.id}</span>
-                          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">點擊定位</span>
-                        </div>
-                        <div className="text-xs text-slate-600">
-                          {getReportDiffText(light.reportDate)}
-                        </div>
-                        {light.fault && (
-                          <div className="text-[10px] text-red-500 font-medium mt-1 line-clamp-1">
-                            故障：{light.fault}
-                          </div>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Unrepaired List Panel (Permanent) */}
+      <div className="absolute bottom-4 left-4 z-[1000] w-72 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500" />
+            未查修清單 ({unrepairedLights.length})
+          </h3>
+        </div>
+        <div className="overflow-y-auto flex-1 p-2">
+          {unrepairedLights.length === 0 ? (
+            <p className="text-center py-8 text-slate-400 text-sm italic">目前無未查修項目</p>
+          ) : (
+            <ul className="space-y-1">
+              {unrepairedLights.map(light => (
+                <li key={light.id} className="group">
+                  <button
+                    onClick={() => {
+                      setTargetLocation([light.lat, light.lng]);
+                    }}
+                    className="w-full text-left p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-indigo-600">{light.id}</span>
+                      <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">點擊定位</span>
+                    </div>
+                    <div className="text-xs text-slate-600">
+                      {getReportDiffText(light.reportDate)}
+                    </div>
+                    {light.fault && (
+                      <div className="text-[10px] text-red-500 font-medium mt-1 line-clamp-1">
+                        故障：{light.fault}
+                      </div>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
       {/* Report Button */}
       <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2">
