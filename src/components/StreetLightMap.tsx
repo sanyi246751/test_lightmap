@@ -55,8 +55,8 @@ export default function StreetLightMap() {
   const [searchId, setSearchId] = useState('');
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
   const [showTooltips, setShowTooltips] = useState(true);
-  const [unrepairedListOpen, setUnrepairedListOpen] = useState(false);
-  
+  const [unrepairedListOpen, setUnrepairedListOpen] = useState(true);
+
   const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export default function StreetLightMap() {
           const reportTimeStr = row["通報時間"]?.trim();
           const status = (row["維修情形"] || "").trim();
           const fault = (row["故障情形"] || "").trim();
-          
+
           if (lampID) {
             if (status === "未查修") {
               unrepairedSet.add(lampID);
@@ -94,7 +94,7 @@ export default function StreetLightMap() {
             const id = row["原路燈號碼"]?.trim();
             const lat = parseFloat(row["緯度Latitude"]);
             const lng = parseFloat(row["經度Longitude"]);
-            
+
             if (!id || isNaN(lat) || isNaN(lng)) return null;
 
             return {
@@ -120,13 +120,13 @@ export default function StreetLightMap() {
     fetchData();
   }, []);
 
-  const unrepairedLights = useMemo(() => 
-    lights.filter(l => l.isUnrepaired), 
-  [lights]);
+  const unrepairedLights = useMemo(() =>
+    lights.filter(l => l.isUnrepaired),
+    [lights]);
 
-  const repairedLights = useMemo(() => 
-    lights.filter(l => !l.isUnrepaired), 
-  [lights]);
+  const repairedLights = useMemo(() =>
+    lights.filter(l => !l.isUnrepaired),
+    [lights]);
 
   const handleSearch = () => {
     const light = lights.find(l => l.id === searchId);
@@ -144,12 +144,12 @@ export default function StreetLightMap() {
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
     const daysPart = Math.floor(diffDays);
     const hoursPart = Math.floor((diffMs - daysPart * 24 * 60 * 60 * 1000) / (1000 * 60 * 60));
-    
+
     let symbol = "🔵";
     if (diffDays >= 7) symbol = "🆘";
     else if (diffDays >= 3) symbol = "⚠️";
     else if (diffDays >= 1) symbol = "🟡";
-    
+
     return `報修 ${daysPart}天${hoursPart}時 ${symbol}`;
   };
 
@@ -158,7 +158,7 @@ export default function StreetLightMap() {
     let size = "small";
     if (count >= 50) size = "large";
     else if (count >= 20) size = "medium";
-    
+
     return L.divIcon({
       html: `<div class="cluster-icon ${size}">${count}</div>`,
       className: 'custom-cluster',
@@ -180,18 +180,18 @@ export default function StreetLightMap() {
   return (
     <div className="relative h-full w-full overflow-hidden font-sans">
       {/* Search Bar */}
-      <div className="absolute top-4 left-4 z-[1000] w-full max-w-xs px-2 sm:px-0">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-xs px-2 sm:px-0">
         <div className="bg-white/90 backdrop-blur shadow-lg rounded-2xl p-2 flex items-center border border-white/20">
           <Search className="w-5 h-5 text-slate-400 ml-2" />
-          <input 
-            type="text" 
-            placeholder="輸入5碼路燈編號" 
+          <input
+            type="text"
+            placeholder="輸入5碼路燈編號"
             className="flex-1 px-3 py-2 bg-transparent outline-none text-slate-700 text-sm"
             value={searchId}
             onChange={(e) => setSearchId(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
-          <button 
+          <button
             onClick={handleSearch}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
@@ -202,7 +202,7 @@ export default function StreetLightMap() {
 
       {/* Map Controls */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
-        <button 
+        <button
           onClick={() => {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition((position) => {
@@ -216,14 +216,14 @@ export default function StreetLightMap() {
           <Navigation className="w-5 h-5" />
         </button>
 
-        <button 
+        <button
           onClick={() => setShowTooltips(!showTooltips)}
           className="bg-white/90 backdrop-blur shadow-md rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 border border-white/20 hover:bg-white transition-all flex items-center gap-2"
         >
           <Info className="w-4 h-4" />
           {showTooltips ? "隱藏編號" : "顯示編號"}
         </button>
-        
+
         <div className="bg-white/90 backdrop-blur shadow-md rounded-xl px-4 py-2 text-xs font-bold text-red-600 border border-white/20 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" />
           未查修：{unrepairedLights.length}
@@ -232,7 +232,7 @@ export default function StreetLightMap() {
 
       {/* Unrepaired List Toggle */}
       <div className="absolute bottom-4 left-4 z-[1000]">
-        <button 
+        <button
           onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
           className="bg-indigo-600 text-white shadow-lg rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all"
         >
@@ -244,7 +244,7 @@ export default function StreetLightMap() {
       {/* Unrepaired List Panel */}
       <AnimatePresence>
         {unrepairedListOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -266,7 +266,7 @@ export default function StreetLightMap() {
                 <ul className="space-y-1">
                   {unrepairedLights.map(light => (
                     <li key={light.id} className="group">
-                      <button 
+                      <button
                         onClick={() => {
                           setTargetLocation([light.lat, light.lng]);
                           setUnrepairedListOpen(false);
@@ -297,7 +297,7 @@ export default function StreetLightMap() {
 
       {/* Report Button */}
       <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2">
-        <button 
+        <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-emerald-600 text-white shadow-lg rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all"
         >
@@ -309,16 +309,16 @@ export default function StreetLightMap() {
         </div>
       </div>
 
-      <MapContainer 
-        center={DEFAULT_CENTER} 
-        zoom={DEFAULT_ZOOM} 
+      <MapContainer
+        center={DEFAULT_CENTER}
+        zoom={DEFAULT_ZOOM}
         className="h-full w-full z-0"
         maxZoom={22}
         // @ts-ignore
         ref={mapRef}
       >
         <MapController target={targetLocation} />
-        
+
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="街道地圖 (OSM)">
             <TileLayer
@@ -348,9 +348,9 @@ export default function StreetLightMap() {
 
         {/* Unrepaired Markers (Not Clustered, Blinking) */}
         {unrepairedLights.map(light => (
-          <Marker 
-            key={light.id} 
-            position={[light.lat, light.lng]} 
+          <Marker
+            key={light.id}
+            position={[light.lat, light.lng]}
             icon={redIcon}
             zIndexOffset={1000}
           >
@@ -363,9 +363,9 @@ export default function StreetLightMap() {
                 <div className="space-y-2 text-xs text-slate-600">
                   <p><span className="font-semibold">故障情形：</span>{light.fault || "未註明"}</p>
                   <p><span className="font-semibold">通報狀態：</span>{getReportDiffText(light.reportDate)}</p>
-                  <a 
-                    href={`https://www.google.com/maps?q=&layer=c&cbll=${light.lat},${light.lng}`} 
-                    target="_blank" 
+                  <a
+                    href={`https://www.google.com/maps?q=&layer=c&cbll=${light.lat},${light.lng}`}
+                    target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-bold transition-colors mt-3"
                   >
@@ -390,8 +390,8 @@ export default function StreetLightMap() {
           maxClusterRadius={50}
         >
           {repairedLights.map(light => (
-            <Marker 
-              key={light.id} 
+            <Marker
+              key={light.id}
               position={[light.lat, light.lng]}
             >
               <Popup>
@@ -401,9 +401,9 @@ export default function StreetLightMap() {
                     <span className="font-bold text-slate-800">#{light.id}</span>
                   </div>
                   <div className="space-y-2 text-xs text-slate-600">
-                    <a 
-                      href={`https://www.google.com/maps?q=&layer=c&cbll=${light.lat},${light.lng}`} 
-                      target="_blank" 
+                    <a
+                      href={`https://www.google.com/maps?q=&layer=c&cbll=${light.lat},${light.lng}`}
+                      target="_blank"
                       rel="noreferrer"
                       className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-bold transition-colors mt-3"
                     >
