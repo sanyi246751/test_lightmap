@@ -297,7 +297,7 @@ export default function StreetLightMap() {
           <span className="whitespace-nowrap">路燈通報系統</span>
         </button>
         <div className="text-[10px] text-slate-400 font-bold tracking-wide">
-          02/25/2026 W.K Design
+          02/26/2026 風行王者 Design
         </div>
       </div>
 
