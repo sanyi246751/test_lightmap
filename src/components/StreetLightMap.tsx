@@ -261,10 +261,10 @@ export default function StreetLightMap() {
                           onClick={() => setTargetLocation([light.lat, light.lng])}
                           className="w-full text-left p-2 sm:p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
                         >
-                          <div className="flex justify-between items-center">
-                            <span className="font-bold text-indigo-600 text-xl sm:text-2xl">{light.id}</span>
+                          <div className="flex justify-start items-center gap-2">
+                            <span className="font-bold text-indigo-600 text-2xl sm:text-3xl">{light.id}</span>
                             <div className="bg-indigo-100 text-indigo-500 p-1.5 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              <Navigation className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
                           </div>
                           <div className="text-xs sm:text-sm text-slate-600">
