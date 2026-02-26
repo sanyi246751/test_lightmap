@@ -62,7 +62,7 @@ const MapController = ({ target, bounds }: { target: [number, number] | null, bo
   const map = useMap();
   useEffect(() => {
     if (target) {
-      map.flyTo(target, 18, { duration: 1.5 });
+      map.flyTo(target, 20, { duration: 1.5 });
     }
   }, [target, map]);
 
@@ -317,7 +317,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-[5px] right-[5px] z-[1000] flex flex-col items-end justify-end gap-1">
+      <div className="absolute bottom-[5px] right-[5px] z-[1000] flex flex-col items-center justify-center gap-1 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
