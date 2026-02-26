@@ -52,9 +52,7 @@ function sendToLineBot(e) {
     }
 
     const mapUrl = found ? `https://maps.google.com/?q=${latitude},${longitude}` : "";
-    const date = new Date(timestamp);
-    const period = date.getHours() < 12 ? "上午" : "下午";
-    const formattedDate = Utilities.formatDate(date, "GMT+0800", "yyyy年M月d日 " + period + " h點m分");
+    const formattedDate = Utilities.formatDate(new Date(timestamp), "GMT+0800", "yyyy/MM/dd HH:mm");
 
     // 從 Script Properties 讀取 Token
     const props = PropertiesService.getScriptProperties();

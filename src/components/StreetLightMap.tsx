@@ -260,19 +260,19 @@ export default function StreetLightMap() {
                       <li key={light.id} className="group">
                         <button
                           onClick={() => setTargetLocation([light.lat, light.lng])}
-                          className="w-full text-center p-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-center gap-1"
+                          className="w-full text-left py-1 px-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
                         >
-                          <div className="flex justify-center items-center gap-2">
-                            <span className="font-bold text-indigo-600 text-2xl sm:text-3xl">{light.id}</span>
-                            <div className="bg-indigo-100 text-indigo-500 p-1.5 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                              <Navigation className="w-4 h-4 sm:w-5 sm:h-5" />
+                          <div className="flex justify-start items-center gap-1.5">
+                            <span className="font-bold text-red-600 text-2xl sm:text-3xl">{light.id}</span>
+                            <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </div>
                           </div>
                           <div className="text-xs sm:text-sm text-slate-600">
                             {getReportDiffText(light.reportDate)}
                           </div>
                           {light.fault && (
-                            <div className="text-xs text-red-500 font-medium mt-0.5 sm:mt-1 line-clamp-1">
+                            <div className="text-xs text-red-500 font-medium line-clamp-1">
                               故障：{light.fault}
                             </div>
                           )}
