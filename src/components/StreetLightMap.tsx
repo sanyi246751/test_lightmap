@@ -233,7 +233,7 @@ export default function StreetLightMap() {
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden font-sans">
       {/* Search Bar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-[400px] px-0">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-[200px] px-0">
         <SearchBar onSearch={handleSearch} />
       </div>
 
@@ -245,7 +245,6 @@ export default function StreetLightMap() {
       <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
           <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
-            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
             未查修清單 ({unrepairedLights.length})
           </h3>
           <button
