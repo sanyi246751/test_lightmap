@@ -256,7 +256,7 @@ export default function StreetLightMap() {
 
       {/* Unrepaired List Panel (Permanent) */}
       <div className="absolute bottom-[5px] left-[5px] z-[1000] w-fit min-w-[180px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col">
-        <div className="p-0 pr-[5px] border-b border-slate-100 bg-slate-50/50 flex justify-start items-center gap-1.5">
+        <div className="py-[5px] pr-[5px] border-b border-slate-100 bg-slate-50/50 flex justify-start items-center gap-1.5">
           <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap pl-2">
             未查修清單 ({unrepairedLights.length})
           </h3>
