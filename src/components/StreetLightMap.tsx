@@ -256,8 +256,8 @@ export default function StreetLightMap() {
 
       {/* Unrepaired List Panel (Permanent) */}
       <div className="absolute bottom-[5px] left-[5px] z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
-        <div className="p-0 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
+        <div className="p-0 border-b border-slate-100 bg-slate-50/50 flex justify-start items-center gap-1.5">
+          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap pl-2">
             未查修清單 ({unrepairedLights.length})
           </h3>
           <button
@@ -317,7 +317,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-[1px] right-[1px] z-[1000] flex flex-col items-center justify-center gap-1 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
+      <div className="absolute bottom-[1px] right-[1px] z-[1000] flex flex-col items-end justify-end gap-0.5 bg-white/95 backdrop-blur-sm p-[1px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
