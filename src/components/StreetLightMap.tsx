@@ -380,12 +380,7 @@ export default function StreetLightMap() {
           <Marker
             key={light.id}
             position={[light.lat, light.lng]}
-          <Marker
-            key={light.id}
-            position={[light.lat, light.lng]}
             icon={searchedLightId === light.id ? goldIcon : redIcon}
-            zIndexOffset={searchedLightId === light.id ? 2000 : 1000}
-          >
             zIndexOffset={searchedLightId === light.id ? 2000 : 1000}
           >
             <Popup>
@@ -427,12 +422,7 @@ export default function StreetLightMap() {
             <Marker
               key={light.id}
               position={[light.lat, light.lng]}
-            <Marker
-              key={light.id}
-              position={[light.lat, light.lng]}
               icon={searchedLightId === light.id ? goldIcon : blueIcon}
-              zIndexOffset={searchedLightId === light.id ? 2000 : 0}
-            >
               zIndexOffset={searchedLightId === light.id ? 2000 : 0}
             >
               <Popup>
