@@ -255,11 +255,11 @@ export default function StreetLightMap() {
       </div>
 
       {/* Unrepaired List Panel (Permanent) */}
-      <div className="absolute bottom-[3px] left-[3px] z-[1000] w-fit min-w-[180px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
-        <div className="px-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
+      <div className="absolute bottom-[3px] left-[3px] z-[1000] w-fit min-w-[160px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
+        <div className="pl-[10px] pr-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
           <button
             onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
-            className="w-full text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
+            className="w-[150px] text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
           >
             {unrepairedListOpen ? '收起' : '展開'}
           </button>
@@ -277,7 +277,7 @@ export default function StreetLightMap() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="overflow-hidden flex flex-col max-h-[60vh]"
             >
-              <div className="overflow-y-auto flex-1 pt-[5px] px-[5px] pb-[5px] border-t border-slate-100">
+              <div className="overflow-y-auto flex-1 pt-[5px] pl-[15px] pr-[5px] pb-[5px] border-t border-slate-100">
                 {unrepairedLights.length === 0 ? (
                   <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
                 ) : (
@@ -319,7 +319,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-[3px] right-[3px] z-[1000] flex flex-col items-end justify-end gap-0.5 bg-white/95 backdrop-blur-sm pt-[5px] pl-[5px] pr-[3px] pb-[3px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
+      <div className="absolute bottom-[3px] right-[3px] z-[1000] flex flex-col items-center justify-center gap-0.5 bg-white/95 backdrop-blur-sm pt-[5px] px-[5px] pb-[3px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-[#0080ffe8] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
@@ -327,7 +327,7 @@ export default function StreetLightMap() {
           <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
           <span className="whitespace-nowrap">路燈通報系統</span>
         </button>
-        <div className="text-[8px] text-slate-400 font-bold tracking-wide opacity-80">
+        <div className="text-[8px] text-slate-400 font-bold tracking-wide opacity-80 text-center w-full">
           02/26/2026 風行王者 <span className="text-[7px]">Design</span>
         </div>
       </div>
