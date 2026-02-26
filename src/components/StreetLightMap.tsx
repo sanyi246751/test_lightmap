@@ -4,7 +4,7 @@ import L from 'leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { StreetLightData, StreetLightLocation, RepairRecord } from '../types';
 import { SHEET_URL, CHECK_SHEET_URL, DEFAULT_CENTER, DEFAULT_ZOOM } from '../constants';
-import { Search, AlertTriangle, Info, ExternalLink, X, Navigation } from 'lucide-react';
+import { Search, AlertTriangle, Lightbulb, ExternalLink, X, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Fix for Leaflet default icon issues in React
@@ -58,7 +58,7 @@ const MapController = ({ target, bounds }: { target: [number, number] | null, bo
 
   useEffect(() => {
     if (bounds) {
-      map.fitBounds(bounds, { padding: [50, 50] });
+      map.fitBounds(bounds, { padding: [20, 20] });
     }
   }, [bounds, map]);
   return null;
@@ -235,7 +235,10 @@ export default function StreetLightMap() {
             <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
             未查修清單 ({unrepairedLights.length})
           </h3>
-          <button className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors">
+          <button
+            onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
+            className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
+          >
             {unrepairedListOpen ? '收起' : '展開'}
           </button>
         </div>
@@ -257,9 +260,9 @@ export default function StreetLightMap() {
                       <li key={light.id} className="group">
                         <button
                           onClick={() => setTargetLocation([light.lat, light.lng])}
-                          className="w-full text-left p-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
+                          className="w-full text-center p-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-center gap-1"
                         >
-                          <div className="flex justify-start items-center gap-2">
+                          <div className="flex justify-center items-center gap-2">
                             <span className="font-bold text-indigo-600 text-2xl sm:text-3xl">{light.id}</span>
                             <div className="bg-indigo-100 text-indigo-500 p-1.5 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                               <Navigation className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -290,7 +293,7 @@ export default function StreetLightMap() {
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-sky-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-sky-600 transition-all shadow-sm"
         >
-          <Info className="w-4 h-4 shrink-0" />
+          <Lightbulb className="w-4 h-4 shrink-0" />
           <span className="whitespace-nowrap">路燈通報系統</span>
         </button>
         <div className="text-[10px] text-slate-400 font-bold tracking-wide">
