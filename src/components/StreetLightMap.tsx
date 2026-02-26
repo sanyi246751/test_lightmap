@@ -256,7 +256,7 @@ export default function StreetLightMap() {
 
       {/* Unrepaired List Panel (Permanent) */}
       <div className="absolute bottom-[3px] left-[3px] z-[1000] w-fit min-w-[180px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
-        <div className="px-[10px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
+        <div className="px-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
           <button
             onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
             className="w-full text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
@@ -277,7 +277,7 @@ export default function StreetLightMap() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="overflow-hidden flex flex-col max-h-[60vh]"
             >
-              <div className="overflow-y-auto flex-1 pt-[5px] px-[10px] pb-[5px] border-t border-slate-100">
+              <div className="overflow-y-auto flex-1 pt-[5px] px-[5px] pb-[5px] border-t border-slate-100">
                 {unrepairedLights.length === 0 ? (
                   <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
                 ) : (
