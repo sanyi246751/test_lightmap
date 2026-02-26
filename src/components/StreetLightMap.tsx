@@ -229,7 +229,7 @@ export default function StreetLightMap() {
 
 
       {/* Unrepaired List Panel (Permanent) */}
-      <div className="absolute bottom-4 left-4 z-[1000] w-72 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
+      <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
           <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
             <AlertTriangle className="w-5 h-5 text-red-500" />
@@ -259,7 +259,7 @@ export default function StreetLightMap() {
                       <li key={light.id} className="group">
                         <button
                           onClick={() => setTargetLocation([light.lat, light.lng])}
-                          className="w-full text-left p-2 sm:p-3 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
+                          className="w-full text-left p-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col gap-1"
                         >
                           <div className="flex justify-start items-center gap-2">
                             <span className="font-bold text-indigo-600 text-2xl sm:text-3xl">{light.id}</span>
