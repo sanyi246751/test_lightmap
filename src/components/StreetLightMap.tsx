@@ -256,10 +256,10 @@ export default function StreetLightMap() {
 
       {/* Unrepaired List Panel (Permanent) */}
       <div className="absolute bottom-[3px] left-[3px] z-[1000] w-fit min-w-[180px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
-        <div className="px-2 py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-start gap-1">
+        <div className="px-2 py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
           <button
             onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
-            className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
+            className="w-full text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
           >
             {unrepairedListOpen ? '收起' : '展開'}
           </button>
@@ -289,22 +289,24 @@ export default function StreetLightMap() {
                             setTargetLocation([light.lat, light.lng]);
                             setSearchedLightId(light.id);
                           }}
-                          className="w-full text-left py-1 pl-[15px] pr-2 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-start gap-0"
+                          className="w-full py-1 pr-2 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-center gap-0"
                         >
-                          <div className="flex justify-start items-center gap-1.5">
-                            <span className="font-bold text-[#0080ffe8] text-3xl">{light.id}</span>
-                            <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                              <Navigation className="w-4 h-4" />
+                          <div className="flex flex-col items-start w-fit">
+                            <div className="flex justify-start items-center gap-1.5">
+                              <span className="font-bold text-[#0080ffe8] text-3xl">{light.id}</span>
+                              <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                                <Navigation className="w-4 h-4" />
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-sm text-slate-600">
-                            {getReportDiffText(light.reportDate)}
-                          </div>
-                          {light.fault && (
-                            <div className="text-xs text-red-500 font-medium line-clamp-1">
-                              故障：{light.fault}
+                            <div className="text-sm text-slate-600">
+                              {getReportDiffText(light.reportDate)}
                             </div>
-                          )}
+                            {light.fault && (
+                              <div className="text-xs text-red-500 font-medium line-clamp-1">
+                                故障：{light.fault}
+                              </div>
+                            )}
+                          </div>
                         </button>
                       </li>
                     ))}
