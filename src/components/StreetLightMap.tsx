@@ -64,10 +64,40 @@ const MapController = ({ target, bounds }: { target: [number, number] | null, bo
   return null;
 };
 
+// Memoized SearchBar component to prevent full map re-renders while typing
+const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) => {
+  const [inputValue, setInputValue] = useState('');
+
+  const handleAction = () => {
+    if (inputValue.trim()) {
+      onSearch(inputValue.trim());
+    }
+  };
+
+  return (
+    <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-2 flex items-center border border-slate-200">
+      <Search className="w-4 h-4 text-slate-400 ml-1.5 shrink-0" />
+      <input
+        type="text"
+        placeholder="編號"
+        className="flex-1 px-2 py-1.5 bg-transparent outline-none text-slate-700 text-xs sm:text-sm min-w-0"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleAction()}
+      />
+      <button
+        onClick={handleAction}
+        className="bg-[#0080ffe8] hover:bg-[#0066cc] text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-colors shrink-0"
+      >
+        查詢
+      </button>
+    </div>
+  );
+});
+
 export default function StreetLightMap() {
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchId, setSearchId] = useState('');
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
   const [showTooltips, setShowTooltips] = useState(true);
   const [unrepairedListOpen, setUnrepairedListOpen] = useState(true);
@@ -151,14 +181,14 @@ export default function StreetLightMap() {
     return bounds;
   }, [lights]);
 
-  const handleSearch = () => {
-    const light = lights.find(l => l.id === searchId);
+  const handleSearch = useMemo(() => (id: string) => {
+    const light = lights.find(l => l.id === id);
     if (light) {
       setTargetLocation([light.lat, light.lng]);
     } else {
       alert("查無此路燈編號！");
     }
-  };
+  }, [lights]);
 
   const getReportDiffText = (reportDate?: Date) => {
     if (!reportDate) return "無通報時間";
@@ -203,24 +233,8 @@ export default function StreetLightMap() {
   return (
     <div className="relative h-full w-full overflow-hidden font-sans">
       {/* Search Bar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-56 px-4 sm:px-0">
-        <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-2 flex items-center border border-slate-200">
-          <Search className="w-5 h-5 text-slate-400 ml-2 shrink-0" />
-          <input
-            type="text"
-            placeholder="輸入5碼路燈編號"
-            className="flex-1 px-3 py-2 bg-transparent outline-none text-slate-700 text-sm"
-            value={searchId}
-            onChange={(e) => setSearchId(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          />
-          <button
-            onClick={handleSearch}
-            className="bg-[#0080ffe8] hover:bg-[#0066cc] text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shrink-0"
-          >
-            查詢
-          </button>
-        </div>
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-40 px-4 sm:px-0">
+        <SearchBar onSearch={handleSearch} />
       </div>
 
       {/* Map Controls */}
