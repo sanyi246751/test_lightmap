@@ -52,7 +52,20 @@ function sendToLineBot(e) {
     }
 
     const mapUrl = found ? `https://maps.google.com/?q=${latitude},${longitude}` : "";
-    const formattedDate = Utilities.formatDate(new Date(timestamp), "GMT+0800", "yyyy/MM/dd HH:mm");
+    // 處理時間戳記與格式化 (民國年格式)
+    let date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+        date = new Date(); // 若解析失敗則抓取目前系統時間
+    }
+
+    const minguoYear = date.getFullYear() - 1911;
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const period = hours < 12 ? "上午" : "下午";
+    const displayHours = hours % 12 || 12; // 12 小時制
+    const formattedDate = minguoYear + "年" + month + "月" + day + "日 " + period + displayHours + "點" + (minutes < 10 ? "0" + minutes : minutes) + "分";
 
     // 從 Script Properties 讀取 Token
     const props = PropertiesService.getScriptProperties();
