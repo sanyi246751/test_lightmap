@@ -292,12 +292,12 @@ export default function StreetLightMap() {
                           className="w-full text-left py-1 pl-[25px] pr-2 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-start gap-0"
                         >
                           <div className="flex justify-start items-center gap-1.5">
-                            <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
+                            <span className="font-bold text-[#0080ffe8] text-3xl">{light.id}</span>
                             <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              <Navigation className="w-4 h-4" />
                             </div>
                           </div>
-                          <div className="text-xs sm:text-sm text-slate-600">
+                          <div className="text-sm text-slate-600">
                             {getReportDiffText(light.reportDate)}
                           </div>
                           {light.fault && (
@@ -317,10 +317,10 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-[5px] right-[5px] z-[1000] flex flex-col items-end justify-end gap-0.5 bg-white/95 backdrop-blur-sm p-[5px] rounded-2xl shadow-[0_8px_30_rgb(0,0,0,0.12)] border border-slate-200">
+      <div className="absolute bottom-[5px] right-[5px] z-[1000] flex flex-col items-end justify-end gap-0.5 bg-white/95 backdrop-blur-sm p-[5px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-          className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
+          className="bg-[#0080ffe8] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
         >
           <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
           <span className="whitespace-nowrap">路燈通報系統</span>
