@@ -10,7 +10,7 @@
  *    - LINE_GROUP_ID: 接收通知的群組 ID (預設為 fallback)
  */
 
-function onFormSubmit(e) {
+function sendToLineBot(e) {
     // 記錄收到的原始資料
     console.log("收到的表單資料: " + JSON.stringify(e.values));
 
