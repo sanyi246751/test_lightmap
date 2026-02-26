@@ -230,7 +230,7 @@ export default function StreetLightMap() {
 
       {/* Unrepaired List Panel (Collapsible) */}
       <div className={`absolute left-4 sm:left-4 z-[1000] transition-all duration-300 ${unrepairedListOpen ? 'bottom-[76px] sm:bottom-4' : 'bottom-[76px] sm:bottom-4'
-        } w-[calc(100%-2rem)] sm:w-80 bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 flex flex-col`}>
+        } w-[calc(100%-2rem)] sm:w-72 bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 flex flex-col`}>
         <div
           className="p-3 sm:p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center cursor-pointer select-none rounded-t-3xl rounded-b-3xl sm:rounded-b-none"
           onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
@@ -267,7 +267,9 @@ export default function StreetLightMap() {
                         >
                           <div className="flex justify-between items-center">
                             <span className="font-bold text-indigo-600 text-xl sm:text-2xl">{light.id}</span>
-                            <span className="text-[10px] sm:text-xs font-medium text-slate-400 uppercase tracking-wider">點選定位</span>
+                            <div className="bg-indigo-100 text-indigo-500 p-1.5 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </div>
                           </div>
                           <div className="text-xs sm:text-sm text-slate-600">
                             {getReportDiffText(light.reportDate)}
