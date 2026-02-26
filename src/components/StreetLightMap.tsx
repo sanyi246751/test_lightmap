@@ -68,26 +68,30 @@ const MapController = ({ target, bounds }: { target: [number, number] | null, bo
 const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) => {
   const [inputValue, setInputValue] = useState('');
 
-  const handleAction = () => {
-    if (inputValue.trim()) {
-      onSearch(inputValue.trim());
-    }
-  };
+  // Debounced auto-search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (inputValue.trim()) {
+        onSearch(inputValue.trim());
+      }
+    }, 500); // 500ms debounce delay
+
+    return () => clearTimeout(timer);
+  }, [inputValue, onSearch]);
 
   return (
-    <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-2 flex items-center border border-slate-200">
-      <Search className="w-4 h-4 text-slate-400 ml-1.5 shrink-0" />
+    <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-1.5 flex items-center border border-slate-200">
+      <Search className="w-3.5 h-3.5 text-slate-400 ml-1 shrink-0" />
       <input
         type="text"
         placeholder="編號"
-        className="flex-1 px-2 py-1.5 bg-transparent outline-none text-slate-700 text-xs sm:text-sm min-w-0"
+        className="flex-1 px-1.5 py-1 bg-transparent outline-none text-slate-700 text-[10px] sm:text-xs min-w-0"
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleAction()}
       />
       <button
-        onClick={handleAction}
-        className="bg-[#0080ffe8] hover:bg-[#0066cc] text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-colors shrink-0"
+        onClick={() => onSearch(inputValue.trim())}
+        className="bg-[#0080ffe8] hover:bg-[#0066cc] text-white px-2 py-1 rounded-lg text-[10px] font-medium transition-colors shrink-0"
       >
         查詢
       </button>
@@ -233,7 +237,7 @@ export default function StreetLightMap() {
   return (
     <div className="relative h-full w-full overflow-hidden font-sans">
       {/* Search Bar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-40 px-4 sm:px-0">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-[120px] px-0">
         <SearchBar onSearch={handleSearch} />
       </div>
 
