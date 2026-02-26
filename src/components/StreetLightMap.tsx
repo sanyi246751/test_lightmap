@@ -35,6 +35,16 @@ const blueIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+const purpleIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-violet.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  className: 'searched-marker',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 function parseTaiwanDateTime(twStr: string) {
   if (!twStr) return null;
   const parts = twStr.trim().split(' ');
@@ -99,6 +109,7 @@ export default function StreetLightMap() {
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [loading, setLoading] = useState(true);
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
+  const [searchedLightId, setSearchedLightId] = useState<string | null>(null);
   const [showTooltips, setShowTooltips] = useState(true);
   const [unrepairedListOpen, setUnrepairedListOpen] = useState(true);
 
@@ -185,8 +196,10 @@ export default function StreetLightMap() {
     const light = lights.find(l => l.id === id);
     if (light) {
       setTargetLocation([light.lat, light.lng]);
+      setSearchedLightId(id);
     } else {
       alert("查無此路燈編號！");
+      setSearchedLightId(null);
     }
   }, [lights]);
 
@@ -242,7 +255,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Unrepaired List Panel (Permanent) */}
-      <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
+      <div className="absolute bottom-[5px] left-[5px] z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
           <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
             未查修清單 ({unrepairedLights.length})
@@ -272,8 +285,11 @@ export default function StreetLightMap() {
                     {unrepairedLights.map(light => (
                       <li key={light.id} className="group">
                         <button
-                          onClick={() => setTargetLocation([light.lat, light.lng])}
-                          className="w-full text-left py-1 pl-[15px] pr-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
+                          onClick={() => {
+                            setTargetLocation([light.lat, light.lng]);
+                            setSearchedLightId(light.id);
+                          }}
+                          className="w-full text-left py-1 pl-[25px] pr-2 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-start gap-0"
                         >
                           <div className="flex justify-start items-center gap-1.5">
                             <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
@@ -301,7 +317,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center justify-center gap-2 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
+      <div className="absolute bottom-[5px] right-[5px] z-[1000] flex flex-col items-center justify-center gap-1 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
@@ -309,7 +325,7 @@ export default function StreetLightMap() {
           <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
           <span className="whitespace-nowrap">路燈通報系統</span>
         </button>
-        <div className="text-[10px] text-slate-400 font-bold tracking-wide">
+        <div className="text-[9px] text-slate-400 font-bold tracking-wide">
           02/26/2026 風行王者 Design
         </div>
       </div>
@@ -364,8 +380,8 @@ export default function StreetLightMap() {
           <Marker
             key={light.id}
             position={[light.lat, light.lng]}
-            icon={redIcon}
-            zIndexOffset={1000}
+            icon={searchedLightId === light.id ? purpleIcon : redIcon}
+            zIndexOffset={searchedLightId === light.id ? 2000 : 1000}
           >
             <Popup>
               <div className="p-1 min-w-[150px]">
@@ -406,7 +422,8 @@ export default function StreetLightMap() {
             <Marker
               key={light.id}
               position={[light.lat, light.lng]}
-              icon={blueIcon}
+              icon={searchedLightId === light.id ? purpleIcon : blueIcon}
+              zIndexOffset={searchedLightId === light.id ? 2000 : 0}
             >
               <Popup>
                 <div className="p-1 min-w-[150px]">
