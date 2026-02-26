@@ -75,19 +75,19 @@ const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) 
   };
 
   return (
-    <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-1.5 flex items-center border border-slate-200">
-      <Search className="w-3.5 h-3.5 text-slate-400 ml-1 shrink-0" />
+    <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-2 flex items-center border border-slate-200">
+      <Search className="w-5 h-5 text-slate-400 ml-2 shrink-0" />
       <input
         type="text"
-        placeholder="編號"
-        className="flex-1 px-1.5 py-1 bg-transparent outline-none text-slate-700 text-[10px] sm:text-xs min-w-0"
+        placeholder="路燈編號"
+        className="flex-1 px-3 py-2 bg-transparent outline-none text-slate-700 text-sm min-w-0"
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleAction()}
       />
       <button
         onClick={handleAction}
-        className="bg-[#0080ffe8] hover:bg-[#0066cc] text-white px-2 py-1 rounded-lg text-[10px] font-medium transition-colors shrink-0"
+        className="bg-[#0080ffe8] hover:bg-[#0066cc] text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shrink-0"
       >
         查詢
       </button>
