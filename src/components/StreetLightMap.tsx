@@ -35,14 +35,14 @@ const blueIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-const purpleIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-violet.png',
+const goldIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
   className: 'searched-marker',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
+  iconSize: [33, 53],
+  iconAnchor: [16, 53],
+  popupAnchor: [1, -44],
+  shadowSize: [53, 53]
 });
 
 function parseTaiwanDateTime(twStr: string) {
@@ -89,8 +89,8 @@ const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) 
       <Search className="w-5 h-5 text-slate-400 ml-2 shrink-0" />
       <input
         type="text"
-        placeholder="路燈編號"
-        className="flex-1 px-3 py-2 bg-transparent outline-none text-slate-700 text-sm min-w-0"
+        placeholder="輸入路燈編號"
+        className="flex-1 px-3 py-2 bg-transparent outline-none text-slate-700 text-xs min-w-0"
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleAction()}
@@ -317,7 +317,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-[5px] right-[5px] z-[1000] flex flex-col items-center justify-center gap-1 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
+      <div className="absolute bottom-[5px] right-[5px] z-[1000] flex flex-col items-end justify-end gap-1">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
@@ -380,7 +380,12 @@ export default function StreetLightMap() {
           <Marker
             key={light.id}
             position={[light.lat, light.lng]}
-            icon={searchedLightId === light.id ? purpleIcon : redIcon}
+          <Marker
+            key={light.id}
+            position={[light.lat, light.lng]}
+            icon={searchedLightId === light.id ? goldIcon : redIcon}
+            zIndexOffset={searchedLightId === light.id ? 2000 : 1000}
+          >
             zIndexOffset={searchedLightId === light.id ? 2000 : 1000}
           >
             <Popup>
@@ -422,7 +427,12 @@ export default function StreetLightMap() {
             <Marker
               key={light.id}
               position={[light.lat, light.lng]}
-              icon={searchedLightId === light.id ? purpleIcon : blueIcon}
+            <Marker
+              key={light.id}
+              position={[light.lat, light.lng]}
+              icon={searchedLightId === light.id ? goldIcon : blueIcon}
+              zIndexOffset={searchedLightId === light.id ? 2000 : 0}
+            >
               zIndexOffset={searchedLightId === light.id ? 2000 : 0}
             >
               <Popup>
