@@ -219,89 +219,68 @@ export default function StreetLightMap() {
     });
   };
 
-  return (
-    <div className="flex items-center justify-center h-[100dvh] w-full bg-slate-50">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-slate-600 font-medium">載入地圖數據中...</p>
-      </div>
-    </div>
-  );
-}
 
-return (
-  <div className="relative h-[100dvh] w-full overflow-hidden font-sans">
-    {/* Search Bar */}
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-[200px] px-0">
-      <SearchBar onSearch={handleSearch} />
-    </div>
-
-    {/* Map Controls */}
-    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+  {/* Unrepaired List Panel (Permanent) */ }
+  <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
+    <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+      <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
+        <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+        未查修清單 ({unrepairedLights.length})
+      </h3>
+      <button
+        onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
+        className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
+      >
+        {unrepairedListOpen ? '收起' : '展開'}
+      </button>
     </div>
 
-
-    {/* Unrepaired List Panel (Permanent) */}
-    <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
-      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-        <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
-          <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
-          未查修清單 ({unrepairedLights.length})
-        </h3>
-        <button
-          onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
-          className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
+    <AnimatePresence>
+      {unrepairedListOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="overflow-hidden flex flex-col max-h-[60vh]"
         >
-          {unrepairedListOpen ? '收起' : '展開'}
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {unrepairedListOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden flex flex-col max-h-[60vh]"
-          >
-            <div className="overflow-y-auto flex-1 p-2 border-t border-slate-100">
-              {unrepairedLights.length === 0 ? (
-                <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
-              ) : (
-                <ul className="space-y-1">
-                  {unrepairedLights.map(light => (
-                    <li key={light.id} className="group">
-                      <button
-                        onClick={() => setTargetLocation([light.lat, light.lng])}
-                        className="w-full text-left py-1 pl-[15px] pr-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
-                      >
-                        <div className="flex justify-start items-center gap-1.5">
-                          <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
-                          <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                            <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </div>
+          <div className="overflow-y-auto flex-1 p-2 border-t border-slate-100">
+            {unrepairedLights.length === 0 ? (
+              <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
+            ) : (
+              <ul className="space-y-1">
+                {unrepairedLights.map(light => (
+                  <li key={light.id} className="group">
+                    <button
+                      onClick={() => setTargetLocation([light.lat, light.lng])}
+                      className="w-full text-left py-1 pl-[15px] pr-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
+                    >
+                      <div className="flex justify-start items-center gap-1.5">
+                        <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
+                        <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                          <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </div>
-                        <div className="text-xs sm:text-sm text-slate-600">
-                          {getReportDiffText(light.reportDate)}
+                      </div>
+                      <div className="text-xs sm:text-sm text-slate-600">
+                        {getReportDiffText(light.reportDate)}
+                      </div>
+                      {light.fault && (
+                        <div className="text-xs text-red-500 font-medium line-clamp-1">
+                          故障：{light.fault}
                         </div>
-                        {light.fault && (
-                          <div className="text-xs text-red-500 font-medium line-clamp-1">
-                            故障：{light.fault}
-                          </div>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
 
-    {/* Report Button & Copyright */}
+  {/* Report Button & Copyright */ }
     <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center justify-center gap-2 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
       <button
         onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
@@ -436,7 +415,7 @@ return (
         ))}
       </MarkerClusterGroup>
     </MapContainer>
-  </div>
+  </div >
 );
 }
 
