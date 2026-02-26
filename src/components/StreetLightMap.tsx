@@ -203,7 +203,7 @@ export default function StreetLightMap() {
   return (
     <div className="relative h-full w-full overflow-hidden font-sans">
       {/* Search Bar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-[calc(100%-2rem)] sm:w-full sm:max-w-sm px-0">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-sm px-4 sm:px-0">
         <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-2 flex items-center border border-slate-200">
           <Search className="w-5 h-5 text-slate-400 ml-2 shrink-0" />
           <input
@@ -249,7 +249,7 @@ export default function StreetLightMap() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden flex flex-col max-h-[35vh] sm:max-h-[60vh]"
+              className="overflow-hidden flex flex-col max-h-[60vh]"
             >
               <div className="overflow-y-auto flex-1 p-2 border-t border-slate-100">
                 {unrepairedLights.length === 0 ? (
@@ -260,7 +260,7 @@ export default function StreetLightMap() {
                       <li key={light.id} className="group">
                         <button
                           onClick={() => setTargetLocation([light.lat, light.lng])}
-                          className="w-full text-left py-1 px-4 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
+                          className="w-full text-left py-1 pl-[15px] pr-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
                         >
                           <div className="flex justify-start items-center gap-1.5">
                             <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
@@ -288,7 +288,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:w-auto z-[1000] flex flex-row sm:flex-col items-center justify-between sm:justify-center gap-2 bg-white/95 backdrop-blur-sm p-2 sm:p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
+      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center justify-center gap-2 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
