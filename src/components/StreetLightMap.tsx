@@ -203,7 +203,7 @@ export default function StreetLightMap() {
   return (
     <div className="relative h-full w-full overflow-hidden font-sans">
       {/* Search Bar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-sm px-4 sm:px-0">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-72 px-4 sm:px-0">
         <div className="bg-white/95 backdrop-blur shadow-lg rounded-2xl p-2 flex items-center border border-slate-200">
           <Search className="w-5 h-5 text-slate-400 ml-2 shrink-0" />
           <input
