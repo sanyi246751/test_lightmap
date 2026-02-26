@@ -231,11 +231,9 @@ export default function StreetLightMap() {
       {/* Unrepaired List Panel (Permanent) */}
       <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
-            <AlertTriangle className="w-5 h-5 text-red-500" />
-            <span className="hidden sm:inline">未查修清單</span>
-            <span className="sm:hidden">未查修</span>
-            ({unrepairedLights.length})
+          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+            未查修清單 ({unrepairedLights.length})
           </h3>
           <button className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors">
             {unrepairedListOpen ? '收起' : '展開'}
