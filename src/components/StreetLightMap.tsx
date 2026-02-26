@@ -216,7 +216,7 @@ export default function StreetLightMap() {
           />
           <button
             onClick={handleSearch}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shrink-0"
+            className="bg-[#0080ffe8] hover:bg-[#0066cc] text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shrink-0"
           >
             查詢
           </button>
@@ -260,10 +260,10 @@ export default function StreetLightMap() {
                       <li key={light.id} className="group">
                         <button
                           onClick={() => setTargetLocation([light.lat, light.lng])}
-                          className="w-full text-left py-1 px-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
+                          className="w-full text-left py-1 px-4 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
                         >
                           <div className="flex justify-start items-center gap-1.5">
-                            <span className="font-bold text-red-600 text-2xl sm:text-3xl">{light.id}</span>
+                            <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
                             <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                               <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </div>
@@ -291,9 +291,9 @@ export default function StreetLightMap() {
       <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:w-auto z-[1000] flex flex-row sm:flex-col items-center justify-between sm:justify-center gap-2 bg-white/95 backdrop-blur-sm p-2 sm:p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-          className="bg-sky-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-sky-600 transition-all shadow-sm"
+          className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
         >
-          <Lightbulb className="w-4 h-4 shrink-0" />
+          <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
           <span className="whitespace-nowrap">路燈通報系統</span>
         </button>
         <div className="text-[10px] text-slate-400 font-bold tracking-wide">
