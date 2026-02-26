@@ -256,16 +256,16 @@ export default function StreetLightMap() {
 
       {/* Unrepaired List Panel (Permanent) */}
       <div className="absolute bottom-[3px] left-[3px] z-[1000] w-fit min-w-[180px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
-        <div className="px-2 py-[5px] border-b border-slate-100 bg-slate-50/50 flex justify-start items-center gap-1.5">
-          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
-            未查修清單 ({unrepairedLights.length})
-          </h3>
+        <div className="px-2 py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-start gap-1">
           <button
             onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
             className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
           >
             {unrepairedListOpen ? '收起' : '展開'}
           </button>
+          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
+            未查修清單 ({unrepairedLights.length})
+          </h3>
         </div>
 
         <AnimatePresence>
