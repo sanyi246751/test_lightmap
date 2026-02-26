@@ -219,181 +219,164 @@ export default function StreetLightMap() {
     });
   };
 
-
-  {/* Unrepaired List Panel (Permanent) */ }
-  <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
-    <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-      <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
-        <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
-        未查修清單 ({unrepairedLights.length})
-      </h3>
-      <button
-        onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
-        className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
-      >
-        {unrepairedListOpen ? '收起' : '展開'}
-      </button>
-    </div>
-
-    <AnimatePresence>
-      {unrepairedListOpen && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="overflow-hidden flex flex-col max-h-[60vh]"
-        >
-          <div className="overflow-y-auto flex-1 p-2 border-t border-slate-100">
-            {unrepairedLights.length === 0 ? (
-              <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
-            ) : (
-              <ul className="space-y-1">
-                {unrepairedLights.map(light => (
-                  <li key={light.id} className="group">
-                    <button
-                      onClick={() => setTargetLocation([light.lat, light.lng])}
-                      className="w-full text-left py-1 pl-[15px] pr-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
-                    >
-                      <div className="flex justify-start items-center gap-1.5">
-                        <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
-                        <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                          <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </div>
-                      </div>
-                      <div className="text-xs sm:text-sm text-slate-600">
-                        {getReportDiffText(light.reportDate)}
-                      </div>
-                      {light.fault && (
-                        <div className="text-xs text-red-500 font-medium line-clamp-1">
-                          故障：{light.fault}
-                        </div>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-
-  {/* Report Button & Copyright */ }
-    <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center justify-center gap-2 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
-      <button
-        onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-        className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
-      >
-        <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
-        <span className="whitespace-nowrap">路燈通報系統</span>
-      </button>
-      <div className="text-[10px] text-slate-400 font-bold tracking-wide">
-        02/26/2026 風行王者 Design
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[100dvh] w-full bg-slate-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 font-medium">載入地圖數據中...</p>
+        </div>
       </div>
-    </div>
+    );
+  }
 
-    <MapContainer
-      center={DEFAULT_CENTER}
-      zoom={DEFAULT_ZOOM}
-      className="h-full w-full z-0"
-      maxZoom={22}
-      // @ts-ignore
-      ref={mapRef}
-    >
-      <MapController target={targetLocation} bounds={mapBounds} />
+  return (
+    <div className="relative h-[100dvh] w-full overflow-hidden font-sans">
+      {/* Search Bar */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-[400px] px-0">
+        <SearchBar onSearch={handleSearch} />
+      </div>
 
-      <LayersControl position="topright">
-        <LayersControl.BaseLayer checked name="內政部TGOS地圖">
-          <TileLayer
-            attribution='&copy; <a href="https://www.nlsc.gov.tw/">內政部國土測繪中心</a>'
-            url="https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}"
-            maxNativeZoom={19}
-            maxZoom={22}
-          />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="OpenStreetMap">
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maxNativeZoom={19}
-            maxZoom={22}
-          />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Esri World Imagery">
-          <TileLayer
-            attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxNativeZoom={18}
-            maxZoom={22}
-          />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="OpenTopoMap">
-          <TileLayer
-            attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-            url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-            maxNativeZoom={17}
-            maxZoom={22}
-          />
-        </LayersControl.BaseLayer>
-      </LayersControl>
+      {/* Map Controls */}
+      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+      </div>
 
-      {/* Unrepaired Markers (Not Clustered, Blinking) */}
-      {unrepairedLights.map(light => (
-        <Marker
-          key={light.id}
-          position={[light.lat, light.lng]}
-          icon={redIcon}
-          zIndexOffset={1000}
-        >
-          <Popup>
-            <div className="p-1 min-w-[150px]">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded-full">⚠️ 未查修</span>
-                <span className="font-bold text-slate-800">編號：{light.id}</span>
+      {/* Unrepaired List Panel (Permanent) */}
+      <div className="absolute bottom-4 left-4 z-[1000] w-56 max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-[0.7] origin-bottom-left">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+            未查修清單 ({unrepairedLights.length})
+          </h3>
+          <button
+            onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
+            className="text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
+          >
+            {unrepairedListOpen ? '收起' : '展開'}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {unrepairedListOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="overflow-hidden flex flex-col max-h-[60vh]"
+            >
+              <div className="overflow-y-auto flex-1 p-2 border-t border-slate-100">
+                {unrepairedLights.length === 0 ? (
+                  <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {unrepairedLights.map(light => (
+                      <li key={light.id} className="group">
+                        <button
+                          onClick={() => setTargetLocation([light.lat, light.lng])}
+                          className="w-full text-left py-1 pl-[15px] pr-2 rounded-2xl hover:bg-indigo-50 transition-colors flex flex-col items-start gap-0"
+                        >
+                          <div className="flex justify-start items-center gap-1.5">
+                            <span className="font-bold text-[#0080ffe8] text-2xl sm:text-3xl">{light.id}</span>
+                            <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </div>
+                          </div>
+                          <div className="text-xs sm:text-sm text-slate-600">
+                            {getReportDiffText(light.reportDate)}
+                          </div>
+                          {light.fault && (
+                            <div className="text-xs text-red-500 font-medium line-clamp-1">
+                              故障：{light.fault}
+                            </div>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <div className="space-y-2 text-xs text-slate-600">
-                <p><span className="font-semibold">故障情形：</span>{light.fault || "未註明"}</p>
-                <p><span className="font-semibold">通報狀態：</span>{getReportDiffText(light.reportDate)}</p>
-                <a
-                  href={`https://www.google.com/maps?q=&layer=c&cbll=${light.lat},${light.lng}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-bold transition-colors mt-3"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  查看街景
-                </a>
-              </div>
-            </div>
-          </Popup>
-          {showTooltips && (
-            <Tooltip permanent direction="top" offset={[0, -32]} opacity={0.9}>
-              {light.id}
-            </Tooltip>
+            </motion.div>
           )}
-        </Marker>
-      ))}
+        </AnimatePresence>
+      </div>
 
-      {/* Repaired Markers (Clustered) */}
-      <MarkerClusterGroup
-        chunkedLoading
-        iconCreateFunction={createClusterCustomIcon}
-        maxClusterRadius={50}
+      {/* Report Button & Copyright */}
+      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center justify-center gap-2 bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
+        <button
+          onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
+          className="bg-[#0080ffe8] text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
+        >
+          <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
+          <span className="whitespace-nowrap">路燈通報系統</span>
+        </button>
+        <div className="text-[10px] text-slate-400 font-bold tracking-wide">
+          02/26/2026 風行王者 Design
+        </div>
+      </div>
+
+      <MapContainer
+        center={DEFAULT_CENTER}
+        zoom={DEFAULT_ZOOM}
+        className="h-full w-full z-0"
+        maxZoom={22}
+        // @ts-ignore
+        ref={mapRef}
       >
-        {repairedLights.map(light => (
+        <MapController target={targetLocation} bounds={mapBounds} />
+
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="內政部TGOS地圖">
+            <TileLayer
+              attribution='&copy; <a href="https://www.nlsc.gov.tw/">內政部國土測繪中心</a>'
+              url="https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}"
+              maxNativeZoom={19}
+              maxZoom={22}
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="OpenStreetMap">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maxNativeZoom={19}
+              maxZoom={22}
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Esri World Imagery">
+            <TileLayer
+              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxNativeZoom={18}
+              maxZoom={22}
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="OpenTopoMap">
+            <TileLayer
+              attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+              maxNativeZoom={17}
+              maxZoom={22}
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
+
+        {/* Unrepaired Markers (Not Clustered, Blinking) */}
+        {unrepairedLights.map(light => (
           <Marker
             key={light.id}
             position={[light.lat, light.lng]}
-            icon={blueIcon}
+            icon={redIcon}
+            zIndexOffset={1000}
           >
             <Popup>
               <div className="p-1 min-w-[150px]">
                 <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded-full">⚠️ 未查修</span>
                   <span className="font-bold text-slate-800">編號：{light.id}</span>
                 </div>
                 <div className="space-y-2 text-xs text-slate-600">
+                  <p><span className="font-semibold">故障情形：</span>{light.fault || "未註明"}</p>
+                  <p><span className="font-semibold">通報狀態：</span>{getReportDiffText(light.reportDate)}</p>
                   <a
                     href={`https://www.google.com/maps?q=&layer=c&cbll=${light.lat},${light.lng}`}
                     target="_blank"
@@ -413,9 +396,47 @@ export default function StreetLightMap() {
             )}
           </Marker>
         ))}
-      </MarkerClusterGroup>
-    </MapContainer>
-  </div >
-);
+
+        {/* Repaired Markers (Clustered) */}
+        <MarkerClusterGroup
+          chunkedLoading
+          iconCreateFunction={createClusterCustomIcon}
+          maxClusterRadius={50}
+        >
+          {repairedLights.map(light => (
+            <Marker
+              key={light.id}
+              position={[light.lat, light.lng]}
+              icon={blueIcon}
+            >
+              <Popup>
+                <div className="p-1 min-w-[150px]">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="font-bold text-slate-800">編號：{light.id}</span>
+                  </div>
+                  <div className="space-y-2 text-xs text-slate-600">
+                    <a
+                      href={`https://www.google.com/maps?q=&layer=c&cbll=${light.lat},${light.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-bold transition-colors mt-3"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      查看街景
+                    </a>
+                  </div>
+                </div>
+              </Popup>
+              {showTooltips && (
+                <Tooltip permanent direction="top" offset={[0, -32]} opacity={0.9}>
+                  {light.id}
+                </Tooltip>
+              )}
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
+      </MapContainer>
+    </div >
+  );
 }
 
