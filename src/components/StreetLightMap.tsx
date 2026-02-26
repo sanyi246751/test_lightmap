@@ -317,7 +317,7 @@ export default function StreetLightMap() {
       </div>
 
       {/* Report Button & Copyright */}
-      <div className="absolute bottom-0 right-[5px] z-[1000] flex flex-col items-end justify-end gap-0.5 bg-white/95 backdrop-blur-sm pt-[5px] pl-[5px] pr-[3px] pb-[3px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
+      <div className="absolute bottom-[3px] right-[3px] z-[1000] flex flex-col items-end justify-end gap-0.5 bg-white/95 backdrop-blur-sm pt-[5px] pl-[5px] pr-[3px] pb-[3px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
           className="bg-[#0080ffe8] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm"
@@ -325,8 +325,8 @@ export default function StreetLightMap() {
           <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
           <span className="whitespace-nowrap">路燈通報系統</span>
         </button>
-        <div className="text-[9px] text-slate-400 font-bold tracking-wide">
-          02/26/2026 風行王者 Design
+        <div className="text-[8px] text-slate-400 font-bold tracking-wide opacity-80">
+          02/26/2026 風行王者 <span className="text-[7px]">Design</span>
         </div>
       </div>
 
