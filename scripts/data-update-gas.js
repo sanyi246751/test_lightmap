@@ -1,96 +1,157 @@
 /**
- * 專案 B：路燈資料升級系統 (GAS) - 診斷版
+ * 專案 B：路燈資料升級系統 (GAS) - 穩定通訊版
  * 功能：
- * 1. 更新「路燈位置參考」中的現有路燈座標。
- * 2. 新增路燈時，根據村里代碼自動生成下一個 5 位數編號。
- * 3. 自動依序排序並記錄歷史。
+ * 1. doPost: 修改總表、新增、刪除、復原。
+ * 2. doGet: 直接回傳歷史紀錄 JSON，解決 OpenSheet 快取問題。
  */
 
-function doPost(e) {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var refSheetName = "路燈位置參考";
-    var historySheetName = "路燈置換資料";
+var TARGET_SPREADSHEET_ID = "1z6LgYfHXVrxP8bFz2pHtexkJZgg1lle_FhiQMt71mqs";
 
-    var refSheet = ss.getSheetByName(refSheetName);
-    var historySheet = ss.getSheetByName(historySheetName);
-
-    // 1. 自動建立缺失的工作表
-    if (!refSheet) {
-        console.log("找不到 '" + refSheetName + "'，正在自動建立...");
-        refSheet = ss.insertSheet(refSheetName);
-        refSheet.appendRow(["原路燈號碼", "緯度Latitude", "經度Longitude"]);
-    }
-
-    if (!historySheet) {
-        console.log("找不到 '" + historySheetName + "'，正在自動建立...");
-        historySheet = ss.insertSheet(historySheetName);
-        historySheet.appendRow(["時間", "路燈編號", "緯度Latitude", "經度Longitude", "備註"]);
-    }
-
+/**
+ * 前端 GET 進入點：獲取歷史紀錄
+ */
+function doGet(e) {
     try {
-        var payload = JSON.parse(e.postData.contents);
-        console.log("接收到資料:", payload);
+        var ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+        var historySheet = ss.getSheetByName("路燈置換資料");
+        if (!historySheet) return returnJson([]);
 
+        var lastRow = historySheet.getLastRow();
+        if (lastRow < 2) return returnJson([]);
+
+        // 抓取最後 100 筆資料 (避免效能問題)
+        var startRow = Math.max(2, lastRow - 99);
+        var numRows = lastRow - startRow + 1;
+        var data = historySheet.getRange(startRow, 1, numRows, 8).getValues();
+
+        var results = data.map(function (row) {
+            return {
+                "時間": row[0],
+                "路燈編號": String(row[1]).replace(/'/g, ''),
+                "原緯度": row[2],
+                "原經度": row[3],
+                "新緯度": row[4],
+                "新經度": row[5],
+                "操作類型": row[6],
+                "備註": row[7]
+            };
+        });
+
+        return returnJson(results.reverse()); // 最新的在前
+
+    } catch (error) {
+        return returnJson({ error: error.toString() });
+    }
+}
+
+function returnJson(data) {
+    return ContentService.createTextOutput(JSON.stringify(data))
+        .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * 前端 POST 進入點：執行操作
+ */
+function doPost(e) {
+    try {
+        var ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+        var refSheetName = "路燈位置參考";
+        var historySheetName = "路燈置換資料";
+
+        var refSheet = ss.getSheetByName(refSheetName) || ss.insertSheet(refSheetName);
+        var historySheet = ss.getSheetByName(historySheetName) || ss.insertSheet(historySheetName);
+
+        // 初始化標題
+        if (refSheet.getLastRow() === 0) {
+            refSheet.appendRow(["原路燈號碼", "緯度Latitude", "經度Longitude"]);
+        }
+
+        var headerRow = ["修改時間", "路燈編號", "原本緯度", "原本經度", "更新緯度", "更新經度", "異動類型", "備註"];
+        if (historySheet.getLastRow() === 0) {
+            historySheet.appendRow(headerRow);
+        } else {
+            historySheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
+        }
+
+        var payload = JSON.parse(e.postData.contents);
+        var action = payload.action || "update";
         var targetId = payload.id;
-        var lat = payload.lat;
-        var lng = payload.lng;
-        var type = payload.type;
-        var villageCode = payload.villageCode;
 
         var now = new Date();
         var formattedDate = (now.getFullYear() - 1911) + "/" + (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + (now.getMinutes() < 10 ? "0" + now.getMinutes() : now.getMinutes());
 
-        if (type === "new" && villageCode) {
-            console.log("執行【新增路燈】流程，村里代碼:", villageCode);
+        if (action === "delete") {
+            var timeToMatch = payload.time;
+            var lastHRow = historySheet.getLastRow();
+            if (lastHRow > 1) {
+                var hData = historySheet.getRange(2, 1, lastHRow - 1, 2).getValues();
+                for (var i = 0; i < hData.length; i++) {
+                    if (String(hData[i][0]).trim() === String(timeToMatch).trim() && String(hData[i][1]).replace(/'/g, '').trim() === String(targetId).trim()) {
+                        historySheet.deleteRow(i + 2);
+                        return ContentService.createTextOutput("Success: Deleted").setMimeType(ContentService.MimeType.TEXT);
+                    }
+                }
+            }
+            return ContentService.createTextOutput("Error: Record not found").setMimeType(ContentService.MimeType.TEXT);
+        }
+
+        var lat = payload.lat;
+        var lng = payload.lng;
+        var beforeLat = payload.beforeLat || "";
+        var beforeLng = payload.beforeLng || "";
+        var villageCode = payload.villageCode;
+        var note = payload.note || "";
+
+        var safeLat = "'" + lat;
+        var safeLng = "'" + lng;
+        var safeBeforeLat = beforeLat ? "'" + beforeLat : "";
+        var safeBeforeLng = beforeLng ? "'" + beforeLng : "";
+
+        if (action === "new" && villageCode) {
             var lastId = findLastIdForVillage(refSheet, villageCode);
             var nextIdNum = parseInt(lastId) + 1;
             targetId = String(nextIdNum).padStart(5, '0');
-            console.log("產生新編號:", targetId);
-
-            refSheet.appendRow(["'" + targetId, lat, lng]);
+            refSheet.appendRow(["'" + targetId, safeLat, safeLng]);
+            note = "新設路燈 (" + (payload.villageName || "未知村里") + ")";
         } else {
-            console.log("執行【座標更新】流程，目標編號:", targetId);
             var lastRow = refSheet.getLastRow();
             var found = false;
-
             if (lastRow > 0) {
                 var dataRange = refSheet.getRange(1, 1, lastRow, 1).getValues();
-                for (var i = 0; i < dataRange.length; i++) {
-                    if (String(dataRange[i][0]).trim() === String(targetId).trim()) {
-                        refSheet.getRange(i + 1, 2, 1, 2).setValues([[lat, lng]]);
+                for (var j = 0; j < dataRange.length; j++) {
+                    if (String(dataRange[j][0]).trim() === String(targetId).trim()) {
+                        refSheet.getRange(j + 1, 2, 1, 2).setValues([[safeLat, safeLng]]);
                         found = true;
-                        console.log("已更新第 " + (i + 1) + " 列資料");
                         break;
                     }
                 }
             }
-
-            if (!found) {
-                console.warn("找不到編號 " + targetId + "，改為新增一行");
-                refSheet.appendRow(["'" + targetId, lat, lng]);
+            if (!found && action !== "restore") {
+                refSheet.appendRow(["'" + targetId, safeLat, safeLng]);
             }
         }
 
-        // --- 自動排序 ---
+        // 寫入歷史 (這步很重要，要在排序前做，確保資料先存檔)
+        historySheet.appendRow([
+            "'" + formattedDate,
+            "'" + targetId,
+            safeBeforeLat,
+            safeBeforeLng,
+            safeLat,
+            safeLng,
+            action === "restore" ? "恢復原始值" : (action === "new" ? "新增" : "手動更正"),
+            note
+        ]);
+
+        // 最後執行排序
         var finalLastRow = refSheet.getLastRow();
         if (finalLastRow > 1) {
             refSheet.getRange(2, 1, finalLastRow - 1, 3).sort({ column: 1, ascending: true });
         }
 
-        // --- 寫入歷史紀錄 ---
-        historySheet.appendRow([
-            formattedDate,
-            "'" + targetId,
-            lat,
-            lng,
-            payload.note || (type === "new" ? "新設路燈" : "座標更新")
-        ]);
-
-        console.log("流程全部完成");
         return ContentService.createTextOutput("Success: " + targetId).setMimeType(ContentService.MimeType.TEXT);
 
     } catch (error) {
-        console.error("發生錯誤:", error.toString());
         return ContentService.createTextOutput("Error: " + error.toString()).setMimeType(ContentService.MimeType.TEXT);
     }
 }
@@ -98,17 +159,18 @@ function doPost(e) {
 function findLastIdForVillage(sheet, villageCode) {
     var lastRow = sheet.getLastRow();
     var maxId = villageCode + "000";
-
     if (lastRow < 1) return maxId;
-
     var data = sheet.getRange(1, 1, lastRow, 1).getValues();
     for (var i = 0; i < data.length; i++) {
         var id = String(data[i][0]).trim();
         if (id.startsWith(villageCode) && id.length === 5) {
-            if (parseInt(id) > parseInt(maxId)) {
-                maxId = id;
-            }
+            if (parseInt(id) > parseInt(maxId)) maxId = id;
         }
     }
     return maxId;
+}
+
+function testConnection() {
+    var ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+    Logger.log("連接成功: " + ss.getName());
 }
