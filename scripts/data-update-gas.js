@@ -1,11 +1,12 @@
 /**
- * 專案 B：路燈資料升級系統 (GAS) - 穩定通訊版
+ * 專案 B：路燈資料升級系統 (GAS) - 照片支援版
  * 功能：
- * 1. doPost: 修改總表、新增、刪除、復原。
- * 2. doGet: 直接回傳歷史紀錄 JSON，解決 OpenSheet 快取問題。
+ * 1. doPost: 修改總表、新增、刪除、復原，並支援 base64 照片上傳至 Drive。
+ * 2. doGet: 直接回傳歷史紀錄 JSON。
  */
 
 var TARGET_SPREADSHEET_ID = "1z6LgYfHXVrxP8bFz2pHtexkJZgg1lle_FhiQMt71mqs";
+var PHOTO_FOLDER_ID = "12EyNHWGxC2qCchRA6EuCVHNPJgiOYiym";
 
 /**
  * 前端 GET 進入點：獲取歷史紀錄
@@ -19,10 +20,10 @@ function doGet(e) {
         var lastRow = historySheet.getLastRow();
         if (lastRow < 2) return returnJson([]);
 
-        // 抓取最後 100 筆資料 (避免效能問題)
+        // 抓取最後 100 筆資料 (含照片連結在第 9 欄)
         var startRow = Math.max(2, lastRow - 99);
         var numRows = lastRow - startRow + 1;
-        var data = historySheet.getRange(startRow, 1, numRows, 8).getValues();
+        var data = historySheet.getRange(startRow, 1, numRows, 9).getValues();
 
         var results = data.map(function (row) {
             return {
@@ -33,7 +34,8 @@ function doGet(e) {
                 "新緯度": row[4],
                 "新經度": row[5],
                 "操作類型": row[6],
-                "備註": row[7]
+                "備註": row[7],
+                "照片連結": row[8] || ""
             };
         });
 
@@ -61,12 +63,12 @@ function doPost(e) {
         var refSheet = ss.getSheetByName(refSheetName) || ss.insertSheet(refSheetName);
         var historySheet = ss.getSheetByName(historySheetName) || ss.insertSheet(historySheetName);
 
-        // 初始化標題
+        // 初始化標題 (增加照片連結攔)
         if (refSheet.getLastRow() === 0) {
             refSheet.appendRow(["原路燈號碼", "緯度Latitude", "經度Longitude"]);
         }
 
-        var headerRow = ["修改時間", "路燈編號", "原本緯度", "原本經度", "更新緯度", "更新經度", "異動類型", "備註"];
+        var headerRow = ["修改時間", "路燈編號", "原本緯度", "原本經度", "更新緯度", "更新經度", "異動類型", "備註", "照片連結"];
         if (historySheet.getLastRow() === 0) {
             historySheet.appendRow(headerRow);
         } else {
@@ -102,6 +104,12 @@ function doPost(e) {
         var villageCode = payload.villageCode;
         var note = payload.note || "";
 
+        // 處理照片上傳
+        var photoUrl = "";
+        if (payload.image) {
+            photoUrl = saveImageToDrive(payload.image, targetId + "_" + Date.now());
+        }
+
         var safeLat = "'" + lat;
         var safeLng = "'" + lng;
         var safeBeforeLat = beforeLat ? "'" + beforeLat : "";
@@ -131,7 +139,7 @@ function doPost(e) {
             }
         }
 
-        // 寫入歷史 (這步很重要，要在排序前做，確保資料先存檔)
+        // 寫入歷史紀錄
         historySheet.appendRow([
             "'" + formattedDate,
             "'" + targetId,
@@ -140,7 +148,8 @@ function doPost(e) {
             safeLat,
             safeLng,
             action === "restore" ? "恢復原始值" : (action === "new" ? "新增" : "手動更正"),
-            note
+            note,
+            photoUrl
         ]);
 
         // 最後執行排序
@@ -153,6 +162,22 @@ function doPost(e) {
 
     } catch (error) {
         return ContentService.createTextOutput("Error: " + error.toString()).setMimeType(ContentService.MimeType.TEXT);
+    }
+}
+
+/**
+ * 將 Base64 圖片存儲至 Google Drive
+ */
+function saveImageToDrive(base64Data, fileName) {
+    try {
+        var decoded = Utilities.base64Decode(base64Data.split(',')[1]);
+        var blob = Utilities.newBlob(decoded, 'image/jpeg', fileName + ".jpg");
+        var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
+        var file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        return file.getUrl();
+    } catch (e) {
+        return "Upload Error: " + e.toString();
     }
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, ArrowLeftCircle, Save, Undo2, Trash2, ArrowRight, Clock } from 'lucide-react';
+import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, ArrowLeftCircle, Save, Undo2, Trash2, ArrowRight, Clock, Image as ImageIcon, Camera, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StreetLightData, HistoryRecord } from '../types';
 import { HISTORY_SHEET_URL, GAS_WEB_APP_URL } from '../constants';
@@ -39,6 +39,8 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const [searchEdit, setSearchEdit] = useState({ lat: '', lng: '' });
     const [newLightId, setNewLightId] = useState('');
     const [newLightEdit, setNewLightEdit] = useState({ lat: '', lng: '' });
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [isProcessingImage, setIsProcessingImage] = useState(false);
 
     const [showConfirm, setShowConfirm] = useState<{ type: 'search' | 'new', id: string, lat: string, lng: string } | null>(null);
 
@@ -167,7 +169,105 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         }
     };
 
-    const handleSave = async (id: string, lat: string, lng: string, options?: { villageCode?: string, action?: string, beforeLat?: string, beforeLng?: string, time?: string }) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, mode: 'camera' | 'file') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsProcessingImage(true);
+        try {
+            // Read as DataURL for preview and upload
+            const base64 = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+            });
+            setSelectedImage(base64);
+
+            // If it's a file upload, try to extract EXIF GPS
+            if (mode === 'file') {
+                const arrayBuffer = await file.arrayBuffer();
+                const coords = extractGPSSimplified(arrayBuffer);
+                if (coords) {
+                    setNewLightEdit({ lat: coords.lat.toFixed(6), lng: coords.lng.toFixed(6) });
+                    alert("成功從照片 EXIF 提取座標！");
+                }
+            }
+        } catch (err) {
+            console.error("Image processing error:", err);
+        } finally {
+            setIsProcessingImage(false);
+            e.target.value = ''; // Reset input
+        }
+    };
+
+    const extractGPSSimplified = (buffer: ArrayBuffer) => {
+        const dv = new DataView(buffer);
+        if (dv.getUint16(0) !== 0xFFD8) return null; // Not a JPEG
+
+        let offset = 2;
+        while (offset < dv.byteLength) {
+            if (dv.getUint16(offset) === 0xFFE1) {
+                // Found APP1 (EXIF)
+                const exifData = parseExif(dv, offset + 4);
+                return exifData;
+            }
+            offset += 2 + dv.getUint16(offset + 2);
+        }
+        return null;
+    };
+
+    const parseExif = (dv: DataView, offset: number) => {
+        // Very basic EXIF GPS parser
+        // Check for "Exif\0\0"
+        if (dv.getUint32(offset) !== 0x45786966) return null;
+
+        const littleEndian = dv.getUint16(offset + 6) === 0x4949;
+        const ifd0Offset = dv.getUint32(offset + 10, littleEndian);
+
+        function getGPS(ifdOffset: number): { lat: number, lng: number } | null {
+            const numEntries = dv.getUint16(offset + 6 + ifdOffset, littleEndian);
+            let gpsIFDOffset = -1;
+
+            for (let i = 0; i < numEntries; i++) {
+                const entryOffset = offset + 6 + ifdOffset + 2 + i * 12;
+                const tag = dv.getUint16(entryOffset, littleEndian);
+                if (tag === 0x8825) { // GPS Info tag
+                    gpsIFDOffset = dv.getUint32(entryOffset + 8, littleEndian);
+                    break;
+                }
+            }
+
+            if (gpsIFDOffset === -1) return null;
+
+            const gpsEntries = dv.getUint16(offset + 6 + gpsIFDOffset, littleEndian);
+            let lat, lng, latRef = 'N', lngRef = 'E';
+
+            for (let i = 0; i < gpsEntries; i++) {
+                const entryOffset = offset + 6 + gpsIFDOffset + 2 + i * 12;
+                const tag = dv.getUint16(entryOffset, littleEndian);
+                const subOffset = dv.getUint32(entryOffset + 8, littleEndian) + offset + 6;
+
+                const getRational = (off: number) => dv.getUint32(off, littleEndian) / dv.getUint32(off + 4, littleEndian);
+
+                if (tag === 1) latRef = String.fromCharCode(dv.getUint8(entryOffset + 8)) === 'S' ? 'S' : 'N';
+                if (tag === 2) lat = getRational(subOffset) + getRational(subOffset + 8) / 60 + getRational(subOffset + 16) / 3600;
+                if (tag === 3) lngRef = String.fromCharCode(dv.getUint8(entryOffset + 8)) === 'W' ? 'W' : 'E';
+                if (tag === 4) lng = getRational(subOffset) + getRational(subOffset + 8) / 60 + getRational(subOffset + 16) / 3600;
+            }
+
+            if (lat !== undefined && lng !== undefined) {
+                return {
+                    lat: latRef === 'S' ? -lat : lat,
+                    lng: lngRef === 'W' ? -lng : lng
+                };
+            }
+            return null;
+        }
+
+        return getGPS(ifd0Offset);
+    };
+
+    const handleSave = async (id: string, lat: string, lng: string, options?: { villageCode?: string, action?: string, beforeLat?: string, beforeLng?: string, time?: string, image?: string }) => {
         if (!GAS_WEB_APP_URL) {
             alert("尚未設定 GAS URL");
             return;
@@ -184,7 +284,8 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             villageCode: options?.villageCode,
             villageName: manualVillage || detectedVillage,
             action: options?.action || (options?.villageCode ? "new" : "update"),
-            time: options?.time
+            time: options?.time,
+            image: options?.image || selectedImage
         };
 
         try {
@@ -195,25 +296,26 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 body: JSON.stringify(payload)
             });
 
-            // Optimistic completion
-            setTimeout(() => {
-                fetchHistory(); // Immediate refresh attempt
-                setIsSaving(false);
-                setShowConfirm(null);
-                setActiveTab('history');
+            // Clean up state after successful dispatch
+            setSelectedImage(null);
+            setFoundLight(null);
+            setSearchId('');
+            setSearchEdit({ lat: '', lng: '' });
 
-                if (payload.action === 'new') {
-                    setNewLightId('');
-                    setNewLightEdit({ lat: '', lng: '' });
-                    setDetectedVillage(null);
-                    setManualVillage('');
-                }
-                alert("✅ 資料同步請求已送出！請稍候 3-5 秒後檢查歷史紀錄。");
-            }, 500);
+            if (payload.action === 'new') {
+                setNewLightId('');
+                setNewLightEdit({ lat: '', lng: '' });
+                setDetectedVillage(null);
+                setManualVillage('');
+            }
 
+            setShowConfirm(null);
+            alert("✅ 資料已同步！請稍候數秒讓 Google Sheet 完成處理。");
+            fetchHistory(); // Refresh history
         } catch (error) {
             console.error("Save error:", error);
             alert("儲存失敗，請檢查網路連線或 GAS 設定。");
+        } finally {
             setIsSaving(false);
         }
     };
@@ -221,13 +323,13 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     return (
         <div className="h-full w-full bg-slate-50 flex flex-col font-sans">
             {/* Header */}
-            <div className="bg-white px-4 py-4 border-b border-slate-200 sticky top-0 z-20 shadow-md">
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
-                            <ChevronLeft className="w-6 h-6" />
+            <div className="bg-white px-4 py-3 border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <button onClick={onBack} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
+                            <ChevronLeft className="w-5 h-5" />
                         </button>
-                        <h1 className="text-xl font-bold text-slate-800">資料置換系統</h1>
+                        <h1 className="text-lg font-black text-slate-800 tracking-tight">資料置換系統</h1>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -253,86 +355,127 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                     </div>
                 </div>
 
-                <div className="flex bg-slate-100 p-1 rounded-2xl relative shadow-inner">
-                    <div className={`absolute inset-y-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-all duration-300 ${activeTab === 'history' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
-                    <button onClick={() => setActiveTab('edit')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold z-10 transition-colors ${activeTab === 'edit' ? 'text-indigo-600' : 'text-slate-500'}`}>
-                        <RefreshCw className="w-4 h-4" /> 編輯資料
+                <div className="flex bg-slate-100 p-1 rounded-xl relative shadow-inner">
+                    <div className={`absolute inset-y-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm transition-all duration-300 ${activeTab === 'history' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
+                    <button onClick={() => setActiveTab('edit')} className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold z-10 transition-colors ${activeTab === 'edit' ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <RefreshCw className="w-3.5 h-3.5" /> 編輯資料
                     </button>
-                    <button onClick={() => setActiveTab('history')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold z-10 transition-colors ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-500'}`}>
-                        <History className="w-4 h-4" /> 歷史紀錄
+                    <button onClick={() => setActiveTab('history')} className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold z-10 transition-colors ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <History className="w-3.5 h-3.5" /> 歷史紀錄
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
+            <div className="flex-1 overflow-y-auto p-3 space-y-4 pb-16">
                 <AnimatePresence mode="wait">
                     {activeTab === 'edit' ? (
                         <motion.div key="edit" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-6">
 
                             {/* ID Search Section */}
-                            <div className="bg-white rounded-[32px] p-6 shadow shadow-slate-200 border border-slate-100 space-y-4">
-                                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 px-1"><Search className="w-5 h-5 text-emerald-500" /> 搜尋路燈編號</h2>
+                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+                                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2 px-1"><Search className="w-4 h-4 text-emerald-500" /> 搜尋路燈編號</h2>
                                 <div className="flex gap-2">
-                                    <input type="text" placeholder="輸入路燈編號..." className="flex-1 px-5 py-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20" value={searchId} onChange={(e) => setSearchId(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchId()} />
-                                    <button onClick={handleSearchId} className="bg-emerald-600 text-white px-6 rounded-2xl font-bold hover:bg-emerald-700">搜尋</button>
+                                    <input type="text" placeholder="輸入編號..." className="flex-1 px-4 py-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20" value={searchId} onChange={(e) => setSearchId(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchId()} />
+                                    <button onClick={handleSearchId} className="bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors">搜尋</button>
                                 </div>
 
-                                <div className="space-y-3 pt-2">
+                                <div className="space-y-2.5 pt-1">
                                     <div className="flex items-center gap-2">
                                         <div className="grid grid-cols-2 gap-2 flex-1">
-                                            <input type="text" value={searchEdit.lat} onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })} className="px-4 py-3 bg-slate-50 border rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
-                                            <input type="text" value={searchEdit.lng} onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })} className="px-4 py-3 bg-slate-50 border rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
+                                            <input type="text" value={searchEdit.lat} onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
+                                            <input type="text" value={searchEdit.lng} onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
                                         </div>
-                                        <button onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toString(), lng: lg.toString() }))} className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors" title="帶入定位">
-                                            <Crosshair className="w-5 h-5" />
+                                        <button onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toString(), lng: lg.toString() }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
+                                            <Crosshair className="w-4 h-4" />
                                         </button>
                                     </div>
                                     {foundLight && (
-                                        <button onClick={() => setShowConfirm({ type: 'search', id: foundLight.id, lat: searchEdit.lat, lng: searchEdit.lng })} className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-700 transition-colors">存檔更新</button>
+                                        <button onClick={() => setShowConfirm({ type: 'search', id: foundLight.id, lat: searchEdit.lat, lng: searchEdit.lng })} className="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-sm">存檔更新</button>
                                     )}
                                 </div>
                             </div>
 
                             {/* New Light Section */}
-                            <div className="bg-white rounded-[32px] p-6 shadow shadow-slate-200 border border-slate-100 space-y-4">
-                                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 px-1"><CheckCircle className="w-5 h-5 text-amber-500" /> 新增路燈編號</h2>
+                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+                                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2 px-1"><CheckCircle className="w-4 h-4 text-amber-500" /> 新增路燈編號</h2>
                                 <div className="space-y-3">
-                                    <input type="text" placeholder="編號(空白則自動產生)" className="w-full px-5 py-4 bg-slate-50 border rounded-2xl outline-none" value={newLightId} onChange={(e) => setNewLightId(e.target.value)} />
+                                    <input type="text" placeholder="編號(空白則自動產生)" className="w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm outline-none" value={newLightId} onChange={(e) => setNewLightId(e.target.value)} />
 
-                                    <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 space-y-2">
-                                        <div className="flex items-center justify-between text-sm">
+                                    <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 space-y-1.5">
+                                        <div className="flex items-center justify-between text-xs">
                                             <span className="font-bold text-amber-800">偵測村里：</span>
                                             <span className={`font-bold ${detectedVillage ? 'text-indigo-600' : 'text-slate-400'}`}>
                                                 {detectedVillage || "待定位中..."}
                                             </span>
                                         </div>
 
-                                        {/* Village Selection Dropdown */}
                                         <select
                                             value={manualVillage || detectedVillage || ''}
                                             onChange={(e) => setManualVillage(e.target.value)}
-                                            className="w-full mt-2 bg-white border border-amber-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none"
+                                            className="w-full bg-white border border-amber-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none"
                                         >
-                                            <option value="" disabled>-- 手動選擇村里 (若自動偵測失敗) --</option>
+                                            <option value="" disabled>-- 手動選擇村里 --</option>
                                             {Object.keys(VILLAGE_CODES).map(v => <option key={v} value={v}>{v}</option>)}
                                         </select>
                                     </div>
 
                                     <div className="flex items-center gap-2">
                                         <div className="grid grid-cols-2 gap-2 flex-1">
-                                            <input type="text" value={newLightEdit.lat} onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })} className="px-4 py-3 bg-slate-50 border rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
-                                            <input type="text" value={newLightEdit.lng} onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })} className="px-4 py-3 bg-slate-50 border rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
+                                            <input type="text" value={newLightEdit.lat} onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
+                                            <input type="text" value={newLightEdit.lng} onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
                                         </div>
-                                        <button onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toString(), lng: lg.toString() }))} className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors" title="帶入定位">
-                                            <Crosshair className="w-5 h-5" />
+                                        <button onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toString(), lng: lg.toString() }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
+                                            <Crosshair className="w-4 h-4" />
                                         </button>
                                     </div>
 
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="file"
+                                            id="photo-upload"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => handleFileChange(e, 'file')}
+                                        />
+                                        <button
+                                            onClick={() => document.getElementById('photo-upload')?.click()}
+                                            disabled={isProcessingImage}
+                                            className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-colors"
+                                        >
+                                            <ImageIcon className="w-4 h-4" /> {isProcessingImage ? '解析中...' : '照片上傳 (含定位)'}
+                                        </button>
+
+                                        <input
+                                            type="file"
+                                            id="camera-capture"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="hidden"
+                                            onChange={(e) => handleFileChange(e, 'camera')}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toString(), lng: lg.toString() }));
+                                                document.getElementById('camera-capture')?.click();
+                                            }}
+                                            className="flex-1 flex items-center justify-center gap-2 bg-sky-50 text-sky-600 py-2.5 rounded-xl font-bold text-xs hover:bg-sky-100 transition-colors"
+                                        >
+                                            <Camera className="w-4 h-4" /> 手機相機 (即時定位)
+                                        </button>
+                                    </div>
+
+                                    {selectedImage && (
+                                        <div className="relative mt-2 rounded-xl overflow-hidden border border-slate-200">
+                                            <img src={selectedImage} alt="Preview" className="w-full h-32 object-cover" />
+                                            <button onClick={() => setSelectedImage(null)} className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full text-[10px]">移除照片</button>
+                                        </div>
+                                    )}
+
                                     <button onClick={() => {
                                         const finalVillage = manualVillage || detectedVillage;
-                                        if (!newLightEdit.lat || !finalVillage) { alert("請先定位或選擇村里"); return; }
-                                        setShowConfirm({ type: 'new', id: newLightId || '自動編碼產生中...', lat: newLightEdit.lat, lng: newLightEdit.lng });
-                                    }} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold shadow-md hover:bg-slate-900 transition-colors">確認新增路燈</button>
+                                        if (!newLightEdit.lat || !finalVillage) { alert("請先定位、拍照或選擇村里"); return; }
+                                        setShowConfirm({ type: 'new', id: newLightId || '自動產生中...', lat: newLightEdit.lat, lng: newLightEdit.lng });
+                                    }} className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-sm shadow-sm hover:bg-slate-900 transition-colors">確認新增路燈</button>
                                 </div>
                             </div>
                         </motion.div>
@@ -355,7 +498,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                 </div>
                             ) : (
                                 history.map((record, idx) => (
-                                    <div key={idx} className="bg-white rounded-[28px] p-5 border border-slate-100 shadow-sm space-y-4">
+                                    <div key={idx} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
                                         <div className="flex items-start justify-between">
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
@@ -364,39 +507,42 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                         {record.異動類型 || record.操作類型}
                                                     </span>
                                                 </div>
-                                                <div className="text-lg font-black text-slate-800">編號: {record.路燈編號}</div>
+                                                <div className="text-base font-black text-slate-800">編號: {record.路燈編號}</div>
                                             </div>
-                                            <button onClick={() => { if (confirm('確定要永久刪除這筆歷史紀錄嗎？')) handleSave(record.路燈編號, "", "", { action: 'delete', time: record.修改時間 || record.時間 }) }} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
-                                                <Trash2 className="w-5 h-5" />
+                                            <button onClick={() => { if (confirm('確定要永久刪除這筆歷史紀錄嗎？')) handleSave(record.路燈編號, "", "", { action: 'delete', time: record.修改時間 || record.時間 }) }} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors">
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
 
                                         {(record.原本緯度 || record.原緯度) ? (
-                                            <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-dashed border-slate-200">
-                                                <div className="flex-1 text-center space-y-1">
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase">修改前</div>
-                                                    <div className="text-[11px] font-mono text-slate-500 leading-tight">{(record.原本緯度 || record.原緯度)}<br />{(record.原本經度 || record.原經度)}</div>
+                                            <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-dashed border-slate-200">
+                                                <div className="flex-1 text-center space-y-0.5">
+                                                    <div className="text-[9px] text-slate-400 font-bold uppercase">前</div>
+                                                    <div className="text-[10px] font-mono text-slate-500 leading-tight">{(record.原本緯度 || record.原緯度).slice(0, 8)}<br />{(record.原本經度 || record.原經度).slice(0, 8)}</div>
                                                 </div>
-                                                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                                                    <ArrowRight className="w-4 h-4 text-slate-400" />
-                                                </div>
-                                                <div className="flex-1 text-center space-y-1">
-                                                    <div className="text-[10px] text-indigo-400 font-bold uppercase">修改後</div>
-                                                    <div className="text-[11px] font-mono text-indigo-600 leading-tight">{(record.更新緯度 || record.新緯度)}<br />{(record.更新經度 || record.新經度)}</div>
+                                                <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+                                                <div className="flex-1 text-center space-y-0.5">
+                                                    <div className="text-[9px] text-indigo-400 font-bold uppercase">後</div>
+                                                    <div className="text-[10px] font-mono text-indigo-600 leading-tight">{(record.更新緯度 || record.新緯度).slice(0, 8)}<br />{(record.更新經度 || record.新經度).slice(0, 8)}</div>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="bg-amber-50/50 p-4 rounded-3xl border border-dashed border-amber-200 text-center">
-                                                <div className="text-[10px] text-amber-500 font-bold uppercase mb-1">全新座標</div>
-                                                <div className="text-xs font-mono text-amber-700">{(record.更新緯度 || record.新緯度)}, {(record.更新經度 || record.新經度)}</div>
+                                            <div className="bg-amber-50/50 p-3 rounded-2xl border border-dashed border-amber-200 text-center">
+                                                <div className="text-[9px] text-amber-500 font-bold uppercase mb-0.5">全新座標</div>
+                                                <div className="text-[10px] font-mono text-amber-700">{(record.更新緯度 || record.新緯度)}, {(record.更新經度 || record.新經度)}</div>
                                             </div>
                                         )}
 
                                         <div className="flex gap-2">
                                             {(record.原本緯度 || record.原緯度) && (
-                                                <button onClick={() => { if (confirm(`確定要將路燈 ${record.路燈編號} 復原為原始座標嗎？`)) handleSave(record.路燈編號, (record.原本緯度 || record.原緯度), (record.原本經度 || record.原經度), { action: 'restore', beforeLat: (record.更新緯度 || record.新緯度), beforeLng: (record.更新經度 || record.新經度) }) }} className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors">
-                                                    <Undo2 className="w-4 h-4" /> 點此恢復原始座標
+                                                <button onClick={() => { if (confirm(`確定要將路燈 ${record.路燈編號} 復原為原始座標嗎？`)) handleSave(record.路燈編號, (record.原本緯度 || record.原緯度), (record.原本經度 || record.原經度), { action: 'restore', beforeLat: (record.更新緯度 || record.新緯度), beforeLng: (record.更新經度 || record.新經度) }) }} className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors">
+                                                    <Undo2 className="w-3.5 h-3.5" /> 點此恢復原始座標
                                                 </button>
+                                            )}
+                                            {record.照片連結 && (
+                                                <a href={record.照片連結} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 py-2 rounded-lg font-bold text-xs hover:bg-emerald-100 transition-colors">
+                                                    <ExternalLink className="w-3.5 h-3.5" /> 查看施工照片
+                                                </a>
                                             )}
                                         </div>
                                     </div>

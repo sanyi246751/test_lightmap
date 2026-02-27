@@ -30,4 +30,5 @@ export interface HistoryRecord {
   "新經度": string;
   "操作類型": string;
   "備註"?: string;
+  "照片連結"?: string;
 }
