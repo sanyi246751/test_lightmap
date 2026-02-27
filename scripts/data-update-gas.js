@@ -151,7 +151,7 @@ function doPost(e) {
                         // 記錄到歷史
                         historySheet.appendRow([
                             formattedDate,
-                            targetId,
+                            "'" + targetId,
                             oldLat,
                             oldLng,
                             "",
@@ -211,7 +211,7 @@ function doPost(e) {
 
         // 寫入歷史紀錄
         historySheet.appendRow([
-            "'" + formattedDate,
+            formattedDate,
             "'" + targetId,
             safeBeforeLat,
             safeBeforeLng,
