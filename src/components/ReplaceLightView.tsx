@@ -41,6 +41,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const [newLightEdit, setNewLightEdit] = useState({ lat: '', lng: '' });
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isProcessingImage, setIsProcessingImage] = useState(false);
+    const [selectedHistory, setSelectedHistory] = useState<Set<number>>(new Set());
 
     const [showConfirm, setShowConfirm] = useState<{ type: 'search' | 'new', id: string, lat: string, lng: string } | null>(null);
 
@@ -320,6 +321,49 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         }
     };
 
+    const handleBatchDelete = async () => {
+        if (!selectedHistory.size) return;
+        if (!confirm(`確定要刪除選中的 ${selectedHistory.size} 筆紀錄嗎？`)) return;
+
+        setIsSaving(true);
+        const items = Array.from(selectedHistory).map(idx => {
+            const h = history[idx];
+            return { id: h.路燈編號, time: h.修改時間 || h.時間 };
+        });
+
+        try {
+            await fetch(GAS_WEB_APP_URL || '', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'batchDelete', items })
+            });
+            alert("多筆紀錄刪除成功！");
+            setSelectedHistory(new Set());
+            fetchHistory();
+        } catch (err) {
+            console.error(err);
+            alert("刪除失敗");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const toggleSelect = (idx: number) => {
+        const next = new Set(selectedHistory);
+        if (next.has(idx)) next.delete(idx);
+        else next.add(idx);
+        setSelectedHistory(next);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedHistory.size === history.length) {
+            setSelectedHistory(new Set());
+        } else {
+            setSelectedHistory(new Set(history.map((_, i) => i)));
+        }
+    };
+
     return (
         <div className="h-full w-full bg-slate-50 flex flex-col font-sans">
             {/* Header */}
@@ -504,6 +548,31 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                 </button>
                             </div>
+
+                            {/* Batch Action Bar */}
+                            <AnimatePresence>
+                                {selectedHistory.size > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg flex items-center justify-between sticky top-2 z-10 mx-1"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <button onClick={toggleSelectAll} className="p-1 px-2 bg-white/20 rounded-lg text-[10px] font-bold">
+                                                {selectedHistory.size === history.length ? "取消全選" : "全選"}
+                                            </button>
+                                            <span className="text-xs font-bold">已選擇 {selectedHistory.size} 筆</span>
+                                        </div>
+                                        <button
+                                            onClick={handleBatchDelete}
+                                            className="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" /> 批次刪除
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                             {history.length === 0 ? (
                                 <div className="py-20 text-center text-slate-400 italic flex flex-col items-center gap-3">
                                     <History className="w-12 h-12 opacity-20" />
@@ -511,52 +580,74 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                 </div>
                             ) : (
                                 history.map((record, idx) => (
-                                    <div key={idx} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
-                                        <div className="flex items-start justify-between">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{record.修改時間 || record.時間}</span>
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${record.異動類型 === '新增' || record.操作類型 === '新增' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                                        {record.異動類型 || record.操作類型}
-                                                    </span>
-                                                </div>
-                                                <div className="text-base font-black text-slate-800">編號: {record.路燈編號}</div>
+                                    <div key={idx} className={`bg-white rounded-2xl p-4 border transition-all duration-300 ${selectedHistory.has(idx) ? 'border-indigo-400 ring-2 ring-indigo-500/10 shadow-md' : 'border-slate-100 shadow-sm'} space-y-3`}>
+                                        <div className="flex items-start gap-3">
+                                            {/* Checkbox */}
+                                            <div className="pt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedHistory.has(idx)}
+                                                    onChange={() => toggleSelect(idx)}
+                                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                />
                                             </div>
-                                            <button onClick={() => { if (confirm('確定要永久刪除這筆歷史紀錄嗎？')) handleSave(record.路燈編號, "", "", { action: 'delete', time: record.修改時間 || record.時間 }) }} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
 
-                                        {(record.原本緯度 || record.原緯度) ? (
-                                            <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-dashed border-slate-200">
-                                                <div className="flex-1 text-center space-y-0.5">
-                                                    <div className="text-[9px] text-slate-400 font-bold uppercase">前</div>
-                                                    <div className="text-[10px] font-mono text-slate-500 leading-tight">{(record.原本緯度 || record.原緯度).slice(0, 8)}<br />{(record.原本經度 || record.原經度).slice(0, 8)}</div>
+                                            <div className="flex-1 space-y-3">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{record.修改時間 || record.時間}</span>
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${record.異動類型 === '新增' || record.操作類型 === '新增' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                                {record.異動類型 || record.操作類型}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-base font-black text-slate-800">編號: {record.路燈編號}</div>
+                                                    </div>
+                                                    <button onClick={() => { if (confirm('確定要永久刪除這筆歷史紀錄嗎？')) handleSave(record.路燈編號, "", "", { action: 'delete', time: record.修改時間 || record.時間 }) }} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
                                                 </div>
-                                                <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
-                                                <div className="flex-1 text-center space-y-0.5">
-                                                    <div className="text-[9px] text-indigo-400 font-bold uppercase">後</div>
-                                                    <div className="text-[10px] font-mono text-indigo-600 leading-tight">{(record.更新緯度 || record.新緯度).slice(0, 8)}<br />{(record.更新經度 || record.新經度).slice(0, 8)}</div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="bg-amber-50/50 p-3 rounded-2xl border border-dashed border-amber-200 text-center">
-                                                <div className="text-[9px] text-amber-500 font-bold uppercase mb-0.5">全新座標</div>
-                                                <div className="text-[10px] font-mono text-amber-700">{(record.更新緯度 || record.新緯度)}, {(record.更新經度 || record.新經度)}</div>
-                                            </div>
-                                        )}
 
-                                        <div className="flex gap-2">
-                                            {(record.原本緯度 || record.原緯度) && (
-                                                <button onClick={() => { if (confirm(`確定要將路燈 ${record.路燈編號} 復原為原始座標嗎？`)) handleSave(record.路燈編號, (record.原本緯度 || record.原緯度), (record.原本經度 || record.原經度), { action: 'restore', beforeLat: (record.更新緯度 || record.新緯度), beforeLng: (record.更新經度 || record.新經度) }) }} className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors">
-                                                    <Undo2 className="w-3.5 h-3.5" /> 點此恢復原始座標
-                                                </button>
-                                            )}
-                                            {record.照片連結 && (
-                                                <a href={record.照片連結} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 py-2 rounded-lg font-bold text-xs hover:bg-emerald-100 transition-colors">
-                                                    <ExternalLink className="w-3.5 h-3.5" /> 查看施工照片
-                                                </a>
-                                            )}
+                                                {(record.原本緯度 || record.原緯度) ? (
+                                                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-dashed border-slate-200">
+                                                        <div className="flex-1 text-center space-y-0.5">
+                                                            <div className="text-[9px] text-slate-400 font-bold uppercase">前</div>
+                                                            <div className="text-[10px] font-mono text-slate-500 leading-tight">
+                                                                {String(record.原本緯度 || record.原緯度 || "").slice(0, 8)}<br />
+                                                                {String(record.原本經度 || record.原經度 || "").slice(0, 8)}
+                                                            </div>
+                                                        </div>
+                                                        <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+                                                        <div className="flex-1 text-center space-y-0.5">
+                                                            <div className="text-[9px] text-indigo-400 font-bold uppercase">後</div>
+                                                            <div className="text-[10px] font-mono text-indigo-600 leading-tight">
+                                                                {String(record.更新緯度 || record.新緯度 || "").slice(0, 8)}<br />
+                                                                {String(record.更新經度 || record.新經度 || "").slice(0, 8)}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-amber-50/50 p-3 rounded-2xl border border-dashed border-amber-200 text-center">
+                                                        <div className="text-[9px] text-amber-500 font-bold uppercase mb-0.5">全新座標</div>
+                                                        <div className="text-[10px] font-mono text-amber-700">
+                                                            {String(record.更新緯度 || record.新緯度 || "")}, {String(record.更新經度 || record.新經度 || "")}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex gap-2">
+                                                    {(record.原本緯度 || record.原緯度) && (
+                                                        <button onClick={() => { if (confirm(`確定要將路燈 ${record.路燈編號} 復原為原始座標嗎？`)) handleSave(record.路燈編號, (record.原本緯度 || record.原緯度), (record.原本經度 || record.原經度), { action: 'restore', beforeLat: (record.更新緯度 || record.新緯度), beforeLng: (record.更新經度 || record.新經度) }) }} className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 py-2 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors">
+                                                            <Undo2 className="w-3.5 h-3.5" /> 點此恢復原始座標
+                                                        </button>
+                                                    )}
+                                                    {record.照片連結 && (
+                                                        <a href={record.照片連結} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 py-2 rounded-lg font-bold text-xs hover:bg-emerald-100 transition-colors">
+                                                            <ExternalLink className="w-3.5 h-3.5" /> 查看施工照片
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 ))

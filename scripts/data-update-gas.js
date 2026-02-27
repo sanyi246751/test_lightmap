@@ -26,16 +26,19 @@ function doGet(e) {
         var data = historySheet.getRange(startRow, 1, numRows, 9).getValues();
 
         var results = data.map(function (row) {
+            var cleanStr = function (val) {
+                return String(val || "").replace(/'/g, '').trim();
+            };
             return {
-                "時間": row[0],
-                "路燈編號": String(row[1]).replace(/'/g, ''),
-                "原緯度": row[2],
-                "原經度": row[3],
-                "新緯度": row[4],
-                "新經度": row[5],
-                "操作類型": row[6],
-                "備註": row[7],
-                "照片連結": row[8] || ""
+                "時間": cleanStr(row[0]),
+                "路燈編號": cleanStr(row[1]),
+                "原緯度": cleanStr(row[2]),
+                "原經度": cleanStr(row[3]),
+                "新緯度": cleanStr(row[4]),
+                "新經度": cleanStr(row[5]),
+                "操作類型": cleanStr(row[6]),
+                "備註": cleanStr(row[7]),
+                "照片連結": String(row[8] || "")
             };
         });
 
@@ -87,14 +90,51 @@ function doPost(e) {
             var lastHRow = historySheet.getLastRow();
             if (lastHRow > 1) {
                 var hData = historySheet.getRange(2, 1, lastHRow - 1, 2).getValues();
-                for (var i = 0; i < hData.length; i++) {
-                    if (String(hData[i][0]).trim() === String(timeToMatch).trim() && String(hData[i][1]).replace(/'/g, '').trim() === String(targetId).trim()) {
+                for (var i = hData.length - 1; i >= 0; i--) { // 改為倒序刪除
+                    var rowTime = String(hData[i][0]).replace(/'/g, '').trim();
+                    var rowId = String(hData[i][1]).replace(/'/g, '').trim();
+                    if (rowTime === String(timeToMatch).replace(/'/g, '').trim() && rowId === String(targetId).trim()) {
                         historySheet.deleteRow(i + 2);
                         return ContentService.createTextOutput("Success: Deleted").setMimeType(ContentService.MimeType.TEXT);
                     }
                 }
             }
             return ContentService.createTextOutput("Error: Record not found").setMimeType(ContentService.MimeType.TEXT);
+        }
+
+        // 新增：批次刪除歷史紀錄
+        if (action === "batchDelete") {
+            var itemsToDelete = payload.items; // [{ id, time }, ...]
+            if (!itemsToDelete || !itemsToDelete.length) return returnError("No items provided");
+
+            var lastHRow = historySheet.getLastRow();
+            if (lastHRow < 2) return returnError("History is empty");
+
+            var hRange = historySheet.getRange(2, 1, lastHRow - 1, 2);
+            var hValues = hRange.getValues();
+            var rowsToDelete = [];
+
+            for (var i = 0; i < hValues.length; i++) {
+                var rowTime = String(hValues[i][0]).replace(/'/g, '').trim();
+                var rowId = String(hValues[i][1]).replace(/'/g, '').trim();
+
+                for (var m = 0; m < itemsToDelete.length; m++) {
+                    var targetTime = String(itemsToDelete[m].time).replace(/'/g, '').trim();
+                    var targetIdMatch = String(itemsToDelete[m].id).replace(/'/g, '').trim();
+
+                    if (rowTime === targetTime && rowId === targetIdMatch) {
+                        rowsToDelete.push(i + 2);
+                        break;
+                    }
+                }
+            }
+
+            // 從後面開始刪除以免跑位
+            rowsToDelete.sort(function (a, b) { return b - a; });
+            for (var n = 0; n < rowsToDelete.length; n++) {
+                historySheet.deleteRow(rowsToDelete[n]);
+            }
+            return ContentService.createTextOutput("Success: Deleted " + rowsToDelete.length + " items").setMimeType(ContentService.MimeType.TEXT);
         }
 
         // 新增：刪除路燈整列功能
