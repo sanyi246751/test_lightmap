@@ -70,8 +70,8 @@ function doPost(e) {
         if (refSheet.getLastRow() === 0) {
             refSheet.appendRow(["原路燈號碼", "緯度Latitude", "經度Longitude"]);
         }
-        // 設定所有欄位為純文字格式，避免自動單位轉換或 0 被省略
-        refSheet.getRange("A:C").setNumberFormat("@");
+        // 強制設定前 3 欄為純文字格式，並使用較大範圍確保涵蓋新列
+        refSheet.getRange("A1:C10000").setNumberFormat("@");
 
         var headerRow = ["修改時間", "路燈編號", "原本緯度", "原本經度", "更新緯度", "更新經度", "異動類型", "備註", "照片連結"];
         if (historySheet.getLastRow() === 0) {
@@ -79,8 +79,8 @@ function doPost(e) {
         } else {
             historySheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
         }
-        // 設定所有欄位 (A-I) 為純文字格式
-        historySheet.getRange("A:I").setNumberFormat("@");
+        // 強制設定前 9 欄為純文字格式
+        historySheet.getRange("A1:I20000").setNumberFormat("@");
 
         var payload = JSON.parse(e.postData.contents);
         var action = payload.action || "update";
@@ -153,17 +153,20 @@ function doPost(e) {
                         refSheet.deleteRow(k + 1);
 
                         // 記錄到歷史
-                        historySheet.appendRow([
-                            formattedDate,
-                            targetId,
-                            oldLat,
-                            oldLng,
+                        var hRow = historySheet.getLastRow() + 1;
+                        var hData = [
+                            String(formattedDate),
+                            String(targetId),
+                            String(oldLat),
+                            String(oldLng),
                             "",
                             "",
                             "刪除路燈",
                             payload.note || "手動刪除整列",
                             ""
-                        ]);
+                        ];
+                        // 確保目標列也是純文字格式
+                        historySheet.getRange(hRow, 1, 1, hData.length).setNumberFormat("@").setValues([hData]);
                         return ContentService.createTextOutput("Success: Deleted Light " + targetId).setMimeType(ContentService.MimeType.TEXT);
                     }
                 }
@@ -184,16 +187,23 @@ function doPost(e) {
             photoUrl = saveImageToDrive(payload.image, targetId + "_" + Date.now());
         }
 
-        var safeLat = lat;
-        var safeLng = lng;
-        var safeBeforeLat = beforeLat;
-        var safeBeforeLng = beforeLng;
+        var safeLat = String(lat);
+        var safeLng = String(lng);
+        var safeBeforeLat = String(beforeLat);
+        var safeBeforeLng = String(beforeLng);
 
         if (action === "new" && villageCode) {
             var lastId = findLastIdForVillage(refSheet, villageCode);
             var nextIdNum = parseInt(lastId) + 1;
             targetId = String(nextIdNum).padStart(5, '0');
-            refSheet.appendRow([targetId, safeLat, safeLng]);
+
+            var newLastRow = refSheet.getLastRow() + 1;
+            // 極度防禦：先設格式，同步，再寫入
+            var rowRange = refSheet.getRange(newLastRow, 1, 1, 3);
+            rowRange.setNumberFormat("@");
+            SpreadsheetApp.flush();
+            rowRange.setValues([[String(targetId), safeLat, safeLng]]);
+
             note = "新設路燈 (" + (payload.villageName || "未知村里") + ")";
         } else {
             var lastRow = refSheet.getLastRow();
@@ -202,21 +212,26 @@ function doPost(e) {
                 var dataRange = refSheet.getRange(1, 1, lastRow, 1).getValues();
                 for (var j = 0; j < dataRange.length; j++) {
                     if (String(dataRange[j][0]).trim() === targetId) {
-                        refSheet.getRange(j + 1, 2, 1, 2).setValues([[safeLat, safeLng]]);
+                        refSheet.getRange(j + 1, 2, 1, 2).setNumberFormat("@").setValues([[safeLat, safeLng]]);
                         found = true;
                         break;
                     }
                 }
             }
             if (!found && action !== "restore") {
-                refSheet.appendRow([targetId, safeLat, safeLng]);
+                var newLastRow = refSheet.getLastRow() + 1;
+                var rowRange = refSheet.getRange(newLastRow, 1, 1, 3);
+                rowRange.setNumberFormat("@");
+                SpreadsheetApp.flush();
+                rowRange.setValues([[String(targetId), safeLat, safeLng]]);
             }
         }
 
         // 寫入歷史紀錄
-        historySheet.appendRow([
-            formattedDate,
-            targetId,
+        var hRow = historySheet.getLastRow() + 1;
+        var hData = [
+            String(formattedDate),
+            String(targetId),
             safeBeforeLat,
             safeBeforeLng,
             safeLat,
@@ -224,7 +239,8 @@ function doPost(e) {
             action === "restore" ? "恢復原始值" : (action === "new" ? "新增" : "手動更正"),
             note,
             photoUrl
-        ]);
+        ];
+        historySheet.getRange(hRow, 1, 1, hData.length).setNumberFormat("@").setValues([hData]);
 
         // 最後執行排序
         var finalLastRow = refSheet.getLastRow();
