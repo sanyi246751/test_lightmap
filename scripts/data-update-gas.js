@@ -1,8 +1,6 @@
 /**
  * 專案 B：路燈資料升級系統 (GAS) - 照片支援版
- * 功能：
- * 1. doPost: 修改總表、新增、刪除、復原，並支援 base64 照片上傳至 Drive。
- * 2. doGet: 直接回傳歷史紀錄 JSON。
+ * 必要權限：需授權存取 Google Spreadsheet 與 Google Drive。
  */
 
 var TARGET_SPREADSHEET_ID = "1z6LgYfHXVrxP8bFz2pHtexkJZgg1lle_FhiQMt71mqs";
@@ -286,6 +284,11 @@ function findLastIdForVillage(sheet, villageCode) {
 }
 
 function testConnection() {
+    // 1. 觸發試算表權限
     var ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
-    Logger.log("連接成功: " + ss.getName());
+    Logger.log("試算表連接成功: " + ss.getName());
+
+    // 2. 觸發雲端硬碟權限
+    var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
+    Logger.log("雲端硬碟資料夾連接成功: " + folder.getName());
 }
