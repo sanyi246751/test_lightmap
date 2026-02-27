@@ -390,7 +390,20 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                         </button>
                                     </div>
                                     {foundLight && (
-                                        <button onClick={() => setShowConfirm({ type: 'search', id: foundLight.id, lat: searchEdit.lat, lng: searchEdit.lng })} className="w-full bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-sm">存檔更新</button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setShowConfirm({ type: 'search', id: foundLight.id, lat: searchEdit.lat, lng: searchEdit.lng })} className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-sm">存檔更新</button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm(`⚠️ 警告：確定要永久刪除路燈 ${foundLight.id} 的所有資料嗎？此動作將刪除總表中的該列資料且無法復原。`)) {
+                                                        handleSave(foundLight.id, "", "", { action: 'deleteLight' });
+                                                    }
+                                                }}
+                                                className="px-4 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors border border-rose-100"
+                                                title="刪除此路燈"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>
