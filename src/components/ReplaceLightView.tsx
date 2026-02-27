@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, ArrowLeftCircle, Save, Undo2, Trash2, ArrowRight, Clock, Image as ImageIcon, Camera, ExternalLink } from 'lucide-react';
+import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, Save, Undo2, Trash2, ArrowRight, Clock, Image as ImageIcon, Camera, ExternalLink, X, ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StreetLightData, HistoryRecord } from '../types';
 import { HISTORY_SHEET_URL, GAS_WEB_APP_URL } from '../constants';
+
+const formatCoord = (val: string | number) => {
+    if (!val) return "";
+    const num = Number(val);
+    if (isNaN(num)) return String(val).slice(0, 10); // fallback
+    return num.toFixed(5);
+};
 
 interface ReplaceLightViewProps {
     lights: StreetLightData[];
@@ -109,7 +116,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const fetchHistory = async () => {
         try {
             // 使用 GAS 直連獲取最新紀錄，避開 OpenSheet 快取問題
-            const res = await fetch(`${GAS_WEB_APP_URL || ''}?t=${Date.now()}`);
+            const res = await fetch(`${GAS_WEB_APP_URL || ''}?t = ${Date.now()} `);
             const data = await res.json();
             console.log("History Data from GAS:", data);
 
@@ -134,11 +141,11 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             (position) => {
                 const { latitude, longitude } = position.coords;
                 const now = new Date();
-                const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} `;
 
                 setLocationInfo({
-                    lat: latitude.toFixed(6),
-                    lng: longitude.toFixed(6),
+                    lat: latitude.toFixed(5),
+                    lng: longitude.toFixed(5),
                     time: timeStr
                 });
 
@@ -189,7 +196,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 const arrayBuffer = await file.arrayBuffer();
                 const coords = extractGPSSimplified(arrayBuffer);
                 if (coords) {
-                    setNewLightEdit({ lat: coords.lat.toFixed(6), lng: coords.lng.toFixed(6) });
+                    setNewLightEdit({ lat: coords.lat.toFixed(5), lng: coords.lng.toFixed(5) });
                     alert("成功從照片 EXIF 提取座標！");
                 }
             }
@@ -429,7 +436,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                             <input type="text" value={searchEdit.lat} onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
                                             <input type="text" value={searchEdit.lng} onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
                                         </div>
-                                        <button onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toString(), lng: lg.toString() }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
+                                        <button onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
                                             <Crosshair className="w-4 h-4" />
                                         </button>
                                     </div>
@@ -461,7 +468,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                     <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 space-y-1.5">
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="font-bold text-amber-800">偵測村里：</span>
-                                            <span className={`font-bold ${detectedVillage ? 'text-indigo-600' : 'text-slate-400'}`}>
+                                            <span className={`font - bold ${detectedVillage ? 'text-indigo-600' : 'text-slate-400'} `}>
                                                 {detectedVillage || "待定位中..."}
                                             </span>
                                         </div>
@@ -481,7 +488,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                             <input type="text" value={newLightEdit.lat} onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
                                             <input type="text" value={newLightEdit.lng} onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
                                         </div>
-                                        <button onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toString(), lng: lg.toString() }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
+                                        <button onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
                                             <Crosshair className="w-4 h-4" />
                                         </button>
                                     </div>
@@ -512,7 +519,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                         />
                                         <button
                                             onClick={() => {
-                                                getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toString(), lng: lg.toString() }));
+                                                getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }));
                                                 document.getElementById('camera-capture')?.click();
                                             }}
                                             className="flex-1 flex items-center justify-center gap-2 bg-sky-50 text-sky-600 py-2.5 rounded-xl font-bold text-xs hover:bg-sky-100 transition-colors"
@@ -545,7 +552,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                     className="p-2 bg-white rounded-xl shadow-sm border border-slate-100 text-indigo-500 hover:rotate-180 transition-transform duration-500"
                                     title="重新整理"
                                 >
-                                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                    <RefreshCw className={`w - 4 h - 4 ${loading ? 'animate-spin' : ''} `} />
                                 </button>
                             </div>
 
@@ -580,7 +587,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                 </div>
                             ) : (
                                 history.map((record, idx) => (
-                                    <div key={idx} className={`bg-white rounded-2xl p-4 border transition-all duration-300 ${selectedHistory.has(idx) ? 'border-indigo-400 ring-2 ring-indigo-500/10 shadow-md' : 'border-slate-100 shadow-sm'} space-y-3`}>
+                                    <div key={idx} className={`bg - white rounded - 2xl p - 4 border transition - all duration - 300 ${selectedHistory.has(idx) ? 'border-indigo-400 ring-2 ring-indigo-500/10 shadow-md' : 'border-slate-100 shadow-sm'} space - y - 3`}>
                                         <div className="flex items-start gap-3">
                                             {/* Checkbox */}
                                             <div className="pt-1">
@@ -597,7 +604,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                     <div className="space-y-1">
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{record.修改時間 || record.時間}</span>
-                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${record.異動類型 === '新增' || record.操作類型 === '新增' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                            <span className={`text - [10px] font - bold px - 2 py - 0.5 rounded - full ${record.異動類型 === '新增' || record.操作類型 === '新增' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'} `}>
                                                                 {record.異動類型 || record.操作類型}
                                                             </span>
                                                         </div>
@@ -613,16 +620,16 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                         <div className="flex-1 text-center space-y-0.5">
                                                             <div className="text-[9px] text-slate-400 font-bold uppercase">前</div>
                                                             <div className="text-[10px] font-mono text-slate-500 leading-tight">
-                                                                {String(record.原本緯度 || record.原緯度 || "").slice(0, 8)}<br />
-                                                                {String(record.原本經度 || record.原經度 || "").slice(0, 8)}
+                                                                {formatCoord(record.原本緯度 || record.原緯度 || "")}<br />
+                                                                {formatCoord(record.原本經度 || record.原經度 || "")}
                                                             </div>
                                                         </div>
                                                         <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
                                                         <div className="flex-1 text-center space-y-0.5">
                                                             <div className="text-[9px] text-indigo-400 font-bold uppercase">後</div>
                                                             <div className="text-[10px] font-mono text-indigo-600 leading-tight">
-                                                                {String(record.更新緯度 || record.新緯度 || "").slice(0, 8)}<br />
-                                                                {String(record.更新經度 || record.新經度 || "").slice(0, 8)}
+                                                                {formatCoord(record.更新緯度 || record.新緯度 || "")}<br />
+                                                                {formatCoord(record.更新經度 || record.新經度 || "")}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -630,7 +637,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                     <div className="bg-amber-50/50 p-3 rounded-2xl border border-dashed border-amber-200 text-center">
                                                         <div className="text-[9px] text-amber-500 font-bold uppercase mb-0.5">全新座標</div>
                                                         <div className="text-[10px] font-mono text-amber-700">
-                                                            {String(record.更新緯度 || record.新緯度 || "")}, {String(record.更新經度 || record.新經度 || "")}
+                                                            {formatCoord(record.更新緯度 || record.新緯度 || "")}, {formatCoord(record.更新經度 || record.新經度 || "")}
                                                         </div>
                                                     </div>
                                                 )}
@@ -710,7 +717,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                             action: showConfirm.type === 'new' ? 'new' : 'update'
                                         });
                                     }}
-                                    className={`w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200 transition-all ${isSaving ? 'opacity-80' : 'hover:bg-indigo-700'}`}
+                                    className={`w - full bg - indigo - 600 text - white py - 4 rounded - 2xl font - bold shadow - lg shadow - indigo - 200 transition - all ${isSaving ? 'opacity-80' : 'hover:bg-indigo-700'} `}
                                 >
                                     {isSaving ? "正在存檔中，請勿關閉..." : "點擊此處確定存檔"}
                                 </button>

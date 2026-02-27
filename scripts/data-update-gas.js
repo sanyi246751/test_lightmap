@@ -66,10 +66,12 @@ function doPost(e) {
         var refSheet = ss.getSheetByName(refSheetName) || ss.insertSheet(refSheetName);
         var historySheet = ss.getSheetByName(historySheetName) || ss.insertSheet(historySheetName);
 
-        // 初始化標題 (增加照片連結攔)
+        // 初始化標題與格式 (增加照片連結攔)
         if (refSheet.getLastRow() === 0) {
             refSheet.appendRow(["原路燈號碼", "緯度Latitude", "經度Longitude"]);
         }
+        // 設定路燈編號欄位為純文字格式，避免 0 被省略
+        refSheet.getRange("A:A").setNumberFormat("@");
 
         var headerRow = ["修改時間", "路燈編號", "原本緯度", "原本經度", "更新緯度", "更新經度", "異動類型", "備註", "照片連結"];
         if (historySheet.getLastRow() === 0) {
@@ -77,6 +79,8 @@ function doPost(e) {
         } else {
             historySheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
         }
+        // 設定修改時間 (A) 與 路燈編號 (B) 欄位為純文字格式
+        historySheet.getRange("A:B").setNumberFormat("@");
 
         var payload = JSON.parse(e.postData.contents);
         var action = payload.action || "update";
@@ -151,7 +155,7 @@ function doPost(e) {
                         // 記錄到歷史
                         historySheet.appendRow([
                             formattedDate,
-                            "'" + targetId,
+                            targetId,
                             oldLat,
                             oldLng,
                             "",
@@ -180,16 +184,16 @@ function doPost(e) {
             photoUrl = saveImageToDrive(payload.image, targetId + "_" + Date.now());
         }
 
-        var safeLat = "'" + lat;
-        var safeLng = "'" + lng;
-        var safeBeforeLat = beforeLat ? "'" + beforeLat : "";
-        var safeBeforeLng = beforeLng ? "'" + beforeLng : "";
+        var safeLat = lat;
+        var safeLng = lng;
+        var safeBeforeLat = beforeLat;
+        var safeBeforeLng = beforeLng;
 
         if (action === "new" && villageCode) {
             var lastId = findLastIdForVillage(refSheet, villageCode);
             var nextIdNum = parseInt(lastId) + 1;
             targetId = String(nextIdNum).padStart(5, '0');
-            refSheet.appendRow(["'" + targetId, safeLat, safeLng]);
+            refSheet.appendRow([targetId, safeLat, safeLng]);
             note = "新設路燈 (" + (payload.villageName || "未知村里") + ")";
         } else {
             var lastRow = refSheet.getLastRow();
@@ -205,14 +209,14 @@ function doPost(e) {
                 }
             }
             if (!found && action !== "restore") {
-                refSheet.appendRow(["'" + targetId, safeLat, safeLng]);
+                refSheet.appendRow([targetId, safeLat, safeLng]);
             }
         }
 
         // 寫入歷史紀錄
         historySheet.appendRow([
             formattedDate,
-            "'" + targetId,
+            targetId,
             safeBeforeLat,
             safeBeforeLng,
             safeLat,
