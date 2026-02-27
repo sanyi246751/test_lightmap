@@ -10,3 +10,5 @@ export const DEFAULT_ZOOM = 14;
 export const HISTORY_SHEET_NAME = "路燈置換資料";
 export const HISTORY_SHEET_URL = `https://opensheet.vercel.app/${SHEET_ID}/${encodeURIComponent(HISTORY_SHEET_NAME)}`;
 export const GAS_WEB_APP_URL = ""; // TODO: User needs to provide this after deployment
+
+export const VILLAGE_GEOJSON_URL = "/data/Sanyi_villages.geojson";

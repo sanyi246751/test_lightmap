@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, LayersControl, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { StreetLightData, StreetLightLocation, RepairRecord } from '../types';
-import { SHEET_URL, CHECK_SHEET_URL, DEFAULT_CENTER, DEFAULT_ZOOM } from '../constants';
+import { SHEET_URL, CHECK_SHEET_URL, DEFAULT_CENTER, DEFAULT_ZOOM, VILLAGE_GEOJSON_URL } from '../constants';
 import { Search, AlertTriangle, Lightbulb, ExternalLink, X, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -112,16 +112,22 @@ export default function StreetLightMap({ onNavigateToReplace }: { onNavigateToRe
   const [searchedLightId, setSearchedLightId] = useState<string | null>(null);
   const [showTooltips, setShowTooltips] = useState(true);
   const [unrepairedListOpen, setUnrepairedListOpen] = useState(true);
+  const [villageData, setVillageData] = useState<any>(null);
 
   const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [locationRes, repairRes] = await Promise.all([
+        const [locationRes, repairRes, villageRes] = await Promise.all([
           fetch(SHEET_URL).then(res => res.json()),
-          fetch(CHECK_SHEET_URL).then(res => res.json())
+          fetch(CHECK_SHEET_URL).then(res => res.json()),
+          fetch(VILLAGE_GEOJSON_URL).then(res => res.json()).catch(() => null)
         ]);
+
+        if (villageRes) {
+          setVillageData(villageRes);
+        }
 
         const unrepairedSet = new Set<string>();
         const reportTimeMap = new Map<string, Date>();
@@ -383,6 +389,29 @@ export default function StreetLightMap({ onNavigateToReplace }: { onNavigateToRe
             />
           </LayersControl.BaseLayer>
         </LayersControl>
+
+        {villageData && (
+          <GeoJSON
+            data={villageData}
+            onEachFeature={(feature, layer) => {
+              if (feature.properties && feature.properties.VILLNAME) {
+                layer.bindTooltip(feature.properties.VILLNAME, {
+                  permanent: true,
+                  direction: 'center',
+                  className: 'village-label'
+                });
+              }
+            }}
+            style={{
+              color: '#4f46e5',
+              weight: 2,
+              opacity: 0.6,
+              fillColor: '#4f46e5',
+              fillOpacity: 0.05,
+              dashArray: '5, 10'
+            }}
+          />
+        )}
 
         {/* Unrepaired Markers (Not Clustered, Blinking) */}
         {unrepairedLights.map(light => (
