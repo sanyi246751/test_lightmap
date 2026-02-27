@@ -140,16 +140,16 @@ function doPost(e) {
             photoUrl = saveImageToDrive(payload.image, targetId + "_" + Date.now());
         }
 
-        var safeLat = lat;
-        var safeLng = lng;
-        var safeBeforeLat = beforeLat;
-        var safeBeforeLng = beforeLng;
+        var safeLat = "'" + lat;
+        var safeLng = "'" + lng;
+        var safeBeforeLat = beforeLat ? "'" + beforeLat : "";
+        var safeBeforeLng = beforeLng ? "'" + beforeLng : "";
 
         if (action === "new" && villageCode) {
             var lastId = findLastIdForVillage(refSheet, villageCode);
             var nextIdNum = parseInt(lastId) + 1;
             targetId = String(nextIdNum).padStart(5, '0');
-            refSheet.appendRow([targetId, safeLat, safeLng]);
+            refSheet.appendRow(["'" + targetId, safeLat, safeLng]);
             note = "新設路燈 (" + (payload.villageName || "未知村里") + ")";
         } else {
             var lastRow = refSheet.getLastRow();
@@ -165,14 +165,14 @@ function doPost(e) {
                 }
             }
             if (!found && action !== "restore") {
-                refSheet.appendRow([targetId, safeLat, safeLng]);
+                refSheet.appendRow(["'" + targetId, safeLat, safeLng]);
             }
         }
 
         // 寫入歷史紀錄
         historySheet.appendRow([
-            formattedDate,
-            targetId,
+            "'" + formattedDate,
+            "'" + targetId,
             safeBeforeLat,
             safeBeforeLng,
             safeLat,

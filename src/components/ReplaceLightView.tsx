@@ -566,6 +566,29 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 </AnimatePresence>
             </div>
 
+            {/* Global Saving Overlay */}
+            <AnimatePresence>
+                {isSaving && !showConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-md"
+                    >
+                        <div className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+                            <div className="relative">
+                                <div className="w-12 h-12 border-4 border-indigo-100 rounded-full" />
+                                <div className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-slate-800 font-bold">資料同步中</p>
+                                <p className="text-slate-500 text-xs">請勿關閉或刷新頁面...</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Confirmation Modal */}
             <AnimatePresence>
                 {showConfirm && (
