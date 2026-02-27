@@ -184,7 +184,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 })
             });
 
-            alert(`✅ 提交成功 (路燈 ${id})！\n這筆資料將儲存至 Google Sheets。`);
+            alert(`✅ 提交要求已送出 (路燈 ${id})！\n請稍候片刻並檢查 Google Sheet。\n\n⚠️ 注意：若 Sheet 無變動，請檢查 GAS 權限是否設為「任何人」。`);
             setShowConfirm(null);
             fetchHistory();
             setActiveTab('history');
