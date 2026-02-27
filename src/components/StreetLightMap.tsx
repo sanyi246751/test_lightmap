@@ -105,29 +105,29 @@ const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) 
   );
 });
 
-export default function StreetLightMap({ onNavigateToReplace }: { onNavigateToReplace?: (data: StreetLightData[]) => void }) {
+export default function StreetLightMap({
+  onNavigateToReplace,
+  villageData
+}: {
+  onNavigateToReplace?: (data: StreetLightData[]) => void;
+  villageData: any;
+}) {
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [loading, setLoading] = useState(true);
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
   const [searchedLightId, setSearchedLightId] = useState<string | null>(null);
   const [showTooltips, setShowTooltips] = useState(true);
   const [unrepairedListOpen, setUnrepairedListOpen] = useState(true);
-  const [villageData, setVillageData] = useState<any>(null);
 
   const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [locationRes, repairRes, villageRes] = await Promise.all([
+        const [locationRes, repairRes] = await Promise.all([
           fetch(SHEET_URL).then(res => res.json()),
-          fetch(CHECK_SHEET_URL).then(res => res.json()),
-          fetch(VILLAGE_GEOJSON_URL).then(res => res.json()).catch(() => null)
+          fetch(CHECK_SHEET_URL).then(res => res.json())
         ]);
-
-        if (villageRes) {
-          setVillageData(villageRes);
-        }
 
         const unrepairedSet = new Set<string>();
         const reportTimeMap = new Map<string, Date>();
@@ -403,12 +403,10 @@ export default function StreetLightMap({ onNavigateToReplace }: { onNavigateToRe
               }
             }}
             style={{
-              color: '#4f46e5',
+              color: '#6366f1',
               weight: 2,
-              opacity: 0.6,
-              fillColor: '#4f46e5',
-              fillOpacity: 0.05,
-              dashArray: '5, 10'
+              opacity: 0.7,
+              fillOpacity: 0
             }}
           />
         )}
