@@ -170,7 +170,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         const light = lights.find(l => l.id === searchId.trim());
         if (light) {
             setFoundLight(light);
-            setSearchEdit({ lat: light.lat.toString(), lng: light.lng.toString() });
+            setSearchEdit({ lat: formatCoord(light.lat), lng: formatCoord(light.lng) });
         } else {
             alert("查無此路燈編號");
             setFoundLight(null);

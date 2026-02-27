@@ -70,8 +70,8 @@ function doPost(e) {
         if (refSheet.getLastRow() === 0) {
             refSheet.appendRow(["原路燈號碼", "緯度Latitude", "經度Longitude"]);
         }
-        // 設定路燈編號欄位為純文字格式，避免 0 被省略
-        refSheet.getRange("A:A").setNumberFormat("@");
+        // 設定所有欄位為純文字格式，避免自動單位轉換或 0 被省略
+        refSheet.getRange("A:C").setNumberFormat("@");
 
         var headerRow = ["修改時間", "路燈編號", "原本緯度", "原本經度", "更新緯度", "更新經度", "異動類型", "備註", "照片連結"];
         if (historySheet.getLastRow() === 0) {
@@ -79,8 +79,8 @@ function doPost(e) {
         } else {
             historySheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
         }
-        // 設定修改時間 (A) 與 路燈編號 (B) 欄位為純文字格式
-        historySheet.getRange("A:B").setNumberFormat("@");
+        // 設定所有欄位 (A-I) 為純文字格式
+        historySheet.getRange("A:I").setNumberFormat("@");
 
         var payload = JSON.parse(e.postData.contents);
         var action = payload.action || "update";
