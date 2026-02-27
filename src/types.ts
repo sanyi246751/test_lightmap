@@ -21,3 +21,10 @@ export interface StreetLightData extends StreetLightLocation {
   lat: number;
   lng: number;
 }
+export interface HistoryRecord {
+  "時間": string;
+  "路燈編號": string;
+  "緯度Latitude": string;
+  "經度Longitude": string;
+  "備註"?: string;
+}

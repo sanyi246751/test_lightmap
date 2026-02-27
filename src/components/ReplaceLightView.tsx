@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { ChevronLeft, MapPin, Search, CheckCircle, Navigation } from 'lucide-react';
-import { motion } from 'motion/react';
-import { StreetLightData } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, MapPin, Search, CheckCircle, Navigation, Crosshair, RefreshCw, History, ArrowLeftCircle, Save } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { StreetLightData, HistoryRecord } from '../types';
+import { HISTORY_SHEET_URL, GAS_WEB_APP_URL } from '../constants';
 
 interface ReplaceLightViewProps {
     lights: StreetLightData[];
@@ -10,51 +11,64 @@ interface ReplaceLightViewProps {
 
 export default function ReplaceLightView({ lights, onBack }: ReplaceLightViewProps) {
     const [loading, setLoading] = useState(false);
-    const [closestLight, setClosestLight] = useState<StreetLightData | null>(null);
-    const [inputLightId, setInputLightId] = useState('');
-    const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null);
-    const [showConfirm, setShowConfirm] = useState(false);
+    const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit');
+    const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-    // Calculate distance between two points in meters
+    // History State
+    const [history, setHistory] = useState<HistoryRecord[]>([]);
+
+    // Closest Light State
+    const [closestLight, setClosestLight] = useState<StreetLightData | null>(null);
+    const [closestEdit, setClosestEdit] = useState({ lat: '', lng: '' });
+
+    // Search ID State
+    const [searchId, setSearchId] = useState('');
+    const [foundLight, setFoundLight] = useState<StreetLightData | null>(null);
+    const [searchEdit, setSearchEdit] = useState({ lat: '', lng: '' });
+
+    const [showConfirm, setShowConfirm] = useState<{ type: 'closest' | 'search', id: string, lat: string, lng: string } | null>(null);
+
+    useEffect(() => {
+        fetchHistory();
+    }, []);
+
+    const fetchHistory = async () => {
+        try {
+            const res = await fetch(HISTORY_SHEET_URL);
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                // Reverse to show newest first
+                setHistory(data.reverse());
+            }
+        } catch (error) {
+            console.error("Error fetching history:", error);
+        }
+    };
+
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        const R = 6371e3; // Earth's radius in meters
+        const R = 6371e3;
         const φ1 = (lat1 * Math.PI) / 180;
         const φ2 = (lat2 * Math.PI) / 180;
         const Δφ = ((lat2 - lat1) * Math.PI) / 180;
         const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-        const a =
-            Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
         return R * c;
     };
 
-    const handleGetClosest = () => {
+    const getDeviceLocation = (callback?: (lat: number, lng: number) => void) => {
         setLoading(true);
         if (!navigator.geolocation) {
             alert("您的瀏覽器不支持定位功能");
             setLoading(false);
             return;
         }
-
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
-                let minDistance = Infinity;
-                let nearest: StreetLightData | null = null;
-
-                lights.forEach((light) => {
-                    const dist = calculateDistance(latitude, longitude, light.lat, light.lng);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        nearest = light;
-                    }
-                });
-
-                setClosestLight(nearest);
+                setDeviceCoords({ lat: latitude, lng: longitude });
                 setLoading(false);
+                if (callback) callback(latitude, longitude);
             },
             (error) => {
                 console.error("Geolocation error:", error);
@@ -65,161 +79,277 @@ export default function ReplaceLightView({ lights, onBack }: ReplaceLightViewPro
         );
     };
 
-    const handleCheckAndMark = () => {
-        if (!inputLightId.trim()) {
-            alert("請輸入路燈編號");
+    const handleFindClosest = () => {
+        getDeviceLocation((lat, lng) => {
+            let minDistance = Infinity;
+            let nearest: StreetLightData | null = null;
+            lights.forEach((light) => {
+                const dist = calculateDistance(lat, lng, light.lat, light.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearest = light;
+                }
+            });
+            if (nearest) {
+                setClosestLight(nearest);
+                setClosestEdit({ lat: nearest.lat.toString(), lng: nearest.lng.toString() });
+            }
+        });
+    };
+
+    const handleSearchId = () => {
+        const light = lights.find(l => l.id === searchId.trim());
+        if (light) {
+            setFoundLight(light);
+            setSearchEdit({ lat: light.lat.toString(), lng: light.lng.toString() });
+        } else {
+            alert("查無此路燈編號");
+            setFoundLight(null);
+        }
+    };
+
+    const handleSave = async (id: string, lat: string, lng: string) => {
+        if (!GAS_WEB_APP_URL) {
+            alert("尚未設定 GAS_WEB_APP_URL，請先部署 Apps Script 並更新 constants.ts");
             return;
         }
 
         setLoading(true);
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                setCurrentCoords({ lat: latitude, lng: longitude });
-                setShowConfirm(true);
-                setLoading(false);
-            },
-            (error) => {
-                console.error("Geolocation error:", error);
-                alert("無法獲取定位，無法進行比對");
-                setLoading(false);
-            },
-            { enableHighAccuracy: true }
-        );
+        try {
+            const response = await fetch(GAS_WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors', // GAS web apps often require no-cors for simple posts
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, lat, lng, note: "置換更新" })
+            });
+
+            alert(`✅ 提交成功 (路燈 ${id})！\n這筆資料將儲存至 Google Sheets。`);
+            setShowConfirm(null);
+            fetchHistory(); // Refresh history
+            setActiveTab('history');
+        } catch (error) {
+            console.error("Save error:", error);
+            alert("儲存失敗，請檢查連線或 GAS 設定。");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const recoverFromHistory = (record: HistoryRecord) => {
+        setSearchId(record.路燈編號);
+        setFoundLight(lights.find(l => l.id === record.路燈編號) || null);
+        setSearchEdit({ lat: record.緯度Latitude.toString(), lng: record.經度Longitude.toString() });
+        setActiveTab('edit');
+        // Scroll to Search Section
+        setTimeout(() => {
+            const searchInput = document.getElementById('search-id-input');
+            searchInput?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
     };
 
     return (
         <div className="h-full w-full bg-slate-50 flex flex-col font-sans">
             {/* Header */}
-            <div className="bg-white px-4 py-4 border-b border-slate-200 flex items-center gap-4 sticky top-0 z-10">
-                <button
-                    onClick={onBack}
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600"
-                >
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
-                <h1 className="text-xl font-bold text-slate-800">資料置換系統</h1>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Section 1: Find Closest */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+            <div className="bg-white px-4 py-4 border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
-                            <Navigation className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-800">尋找最近路燈</h2>
-                            <p className="text-sm text-slate-500">透過定位找出離您最近的路燈編號</p>
-                        </div>
+                        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
+                            <ChevronLeft className="w-6 h-6" />
+                        </button>
+                        <h1 className="text-xl font-bold text-slate-800">資料置換系統</h1>
                     </div>
-
                     <button
-                        onClick={handleGetClosest}
-                        disabled={loading}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white py-4 rounded-2xl font-bold transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+                        onClick={() => getDeviceLocation()}
+                        className={`p-2 rounded-xl transition-all ${deviceCoords ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'} hover:scale-105 active:scale-95`}
                     >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <MapPin className="w-5 h-5" />
-                        )}
-                        定位並尋找
+                        <Crosshair className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-
-                    {closestLight && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col items-center gap-2"
-                        >
-                            <span className="text-indigo-600 text-sm font-medium">最近路燈編號</span>
-                            <span className="text-4xl font-black text-indigo-700">{closestLight.id}</span>
-                            <div className="text-xs text-indigo-400 mt-1">
-                                座標: {closestLight.lat.toFixed(6)}, {closestLight.lng.toFixed(6)}
-                            </div>
-                        </motion.div>
-                    )}
                 </div>
 
-                {/* Section 2: Input and Confirm */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
-                            <Search className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-800">更新路燈座標</h2>
-                            <p className="text-sm text-slate-500">輸入編號並將其位置更新至您目前的定位</p>
-                        </div>
-                    </div>
-
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="請輸入路燈編號"
-                            className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-lg font-medium"
-                            value={inputLightId}
-                            onChange={(e) => setInputLightId(e.target.value)}
-                        />
-                    </div>
-
+                {/* Tab Switcher */}
+                <div className="flex bg-slate-100 p-1 rounded-2xl relative">
+                    <div
+                        className={`absolute inset-y-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-all duration-300 ${activeTab === 'history' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}
+                    />
                     <button
-                        onClick={handleCheckAndMark}
-                        disabled={loading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white py-4 rounded-2xl font-bold transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+                        onClick={() => setActiveTab('edit')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold z-10 transition-colors ${activeTab === 'edit' ? 'text-indigo-600' : 'text-slate-500'}`}
                     >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <CheckCircle className="w-5 h-5" />
-                        )}
-                        取得目前定位並確認
+                        <RefreshCw className="w-4 h-4" /> 編輯資料
                     </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold z-10 transition-colors ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-500'}`}
+                    >
+                        <History className="w-4 h-4" /> 歷史紀錄
+                    </button>
+                </div>
+            </div>
 
-                    {showConfirm && currentCoords && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
+                <AnimatePresence mode="wait">
+                    {activeTab === 'edit' ? (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm"
+                            key="edit"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
                         >
-                            <div className="bg-white rounded-[32px] p-8 w-full max-w-sm shadow-2xl space-y-6">
-                                <div className="text-center space-y-2">
-                                    <h3 className="text-2xl font-black text-slate-800">確認更新？</h3>
-                                    <p className="text-slate-500">
-                                        即將更新路燈 <span className="font-bold text-emerald-600">{inputLightId}</span> 的座標為目前的定位。
-                                    </p>
-                                </div>
-
-                                <div className="bg-slate-50 rounded-2xl p-4 text-center space-y-1">
-                                    <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">目前定位座標</div>
-                                    <div className="text-slate-700 font-mono font-medium">
-                                        {currentCoords.lat.toFixed(6)}, {currentCoords.lng.toFixed(6)}
+                            {/* Find Closest Section */}
+                            <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
+                                        <Navigation className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-slate-800">尋找最近路燈</h2>
+                                        <p className="text-sm text-slate-500">定位找出最接近的路燈</p>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={handleFindClosest}
+                                    disabled={loading}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white py-4 rounded-2xl font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
+                                    定位並尋找最近路燈
+                                </button>
 
-                                <div className="flex flex-col gap-3">
-                                    <button
-                                        onClick={() => {
-                                            alert(`已提交更新請求：${inputLightId} -> ${currentCoords.lat}, ${currentCoords.lng}`);
-                                            setShowConfirm(false);
-                                        }}
-                                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-200"
-                                    >
-                                        確定覆蓋
-                                    </button>
-                                    <button
-                                        onClick={() => setShowConfirm(false)}
-                                        className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-bold transition-colors"
-                                    >
-                                        取消
-                                    </button>
+                                {closestLight && (
+                                    <div className="space-y-4 pt-2">
+                                        <div className="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100 flex flex-col items-center">
+                                            <span className="text-indigo-600 text-sm font-bold">最近編號: {closestLight.id}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input
+                                                type="text" value={closestEdit.lat}
+                                                onChange={e => setClosestEdit({ ...closestEdit, lat: e.target.value })}
+                                                className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono" placeholder="緯度"
+                                            />
+                                            <input
+                                                type="text" value={closestEdit.lng}
+                                                onChange={e => setClosestEdit({ ...closestEdit, lng: e.target.value })}
+                                                className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono" placeholder="經度"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setShowConfirm({ type: 'closest', id: closestLight.id, lat: closestEdit.lat, lng: closestEdit.lng })}
+                                            className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold"
+                                        >
+                                            確認並存檔
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ID Search Section */}
+                            <div id="search-section" className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
+                                        <Search className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-slate-800">搜尋路燈編號</h2>
+                                        <p className="text-sm text-slate-500">輸入編號手動編輯座標</p>
+                                    </div>
                                 </div>
+                                <div className="flex gap-2">
+                                    <input
+                                        id="search-id-input"
+                                        type="text" placeholder="輸入編號 (例: 001)"
+                                        className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none"
+                                        value={searchId} onChange={(e) => setSearchId(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleSearchId()}
+                                    />
+                                    <button onClick={handleSearchId} className="bg-emerald-600 text-white px-6 rounded-2xl font-bold">搜尋</button>
+                                </div>
+
+                                {foundLight && (
+                                    <div className="space-y-4 pt-2">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input
+                                                type="text" value={searchEdit.lat}
+                                                onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })}
+                                                className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono" placeholder="緯度"
+                                            />
+                                            <input
+                                                type="text" value={searchEdit.lng}
+                                                onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
+                                                className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono" placeholder="經度"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toString(), lng: lg.toString() }))} className="flex-1 bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs">
+                                                <Crosshair className="w-4 h-4" /> 帶入定位
+                                            </button>
+                                            <button onClick={() => setShowConfirm({ type: 'search', id: foundLight.id, lat: searchEdit.lat, lng: searchEdit.lng })} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">存檔更新</button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
+                    ) : (
+                        <motion.div
+                            key="history"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            className="space-y-4"
+                        >
+                            {history.length === 0 ? (
+                                <div className="py-20 text-center text-slate-400 italic">目前無編輯紀錄</div>
+                            ) : (
+                                history.map((record, idx) => (
+                                    <div key={idx} className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">{record.時間}</span>
+                                                <span className="font-bold text-slate-800">編號: {record.路燈編號}</span>
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 font-mono">
+                                                {record.緯度Latitude}, {record.經度Longitude}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => recoverFromHistory(record)}
+                                            className="p-3 bg-slate-50 text-indigo-500 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                            title="復原"
+                                        >
+                                            <ArrowLeftCircle className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </motion.div>
                     )}
-                </div>
+                </AnimatePresence>
             </div>
+
+            {/* Confirmation Modal */}
+            <AnimatePresence>
+                {showConfirm && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm">
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-[40px] p-8 w-full max-w-sm shadow-2xl space-y-6">
+                            <div className="text-center space-y-2">
+                                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                                    <Save className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-800">確認存檔？</h3>
+                                <p className="text-slate-500 text-sm">更新將同步至 Google 試算表</p>
+                            </div>
+                            <div className="bg-slate-50 rounded-2xl p-4 text-center space-y-1 border border-slate-100">
+                                <div className="text-slate-700 font-bold">{showConfirm.id}</div>
+                                <div className="text-slate-500 font-mono text-xs">{showConfirm.lat}, {showConfirm.lng}</div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <button onClick={() => handleSave(showConfirm.id, showConfirm.lat, showConfirm.lng)} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">確定存檔</button>
+                                <button onClick={() => setShowConfirm(null)} className="w-full bg-slate-100 text-slate-600 py-4 rounded-2xl font-bold">取消</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
