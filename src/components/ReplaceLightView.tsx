@@ -71,7 +71,10 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         if (!villageData || !villageData.features) return null;
         for (const feature of villageData.features) {
             const geometry = feature.geometry;
-            const name = feature.properties.VILLNAME;
+            let name = feature.properties.VILLNAME;
+            if (name === "双湖村") name = "雙湖村";
+            if (name === "双潭村") name = "雙潭村";
+
             if (geometry.type === 'Polygon') {
                 if (isPointInPolygon(lat, lng, geometry.coordinates)) return name;
             } else if (geometry.type === 'MultiPolygon') {
