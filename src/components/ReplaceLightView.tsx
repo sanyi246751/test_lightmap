@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, Save, Undo2, Trash2, ArrowRight, Clock, Image as ImageIcon, Camera, ExternalLink, X, Check, Cloud } from 'lucide-react';
+import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, Save, Undo2, Trash2, Camera, ExternalLink, X, Check, Cloud, Image as ImageIcon, Smile, Sun, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StreetLightData } from '../types';
 import { GAS_WEB_APP_URL } from '../constants';
@@ -86,11 +86,9 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const getNextId = (vName: string) => {
         const vCode = VILLAGE_CODES[vName];
         if (!vCode) return '';
-        // Find all lights in this village
         const villageLights = lights.filter(l => l.id.startsWith(vCode));
         if (villageLights.length === 0) return `${vCode}001`;
 
-        // Extract numbers and find max
         const nums = villageLights.map(l => {
             const n = parseInt(l.id);
             return isNaN(n) ? 0 : n;
@@ -112,7 +110,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
     useEffect(() => {
         fetchHistory();
-        getDeviceLocation(); // 進入系統預先定位
+        getDeviceLocation();
     }, []);
 
     const fetchHistory = async () => {
@@ -131,7 +129,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const getDeviceLocation = (callback?: (lat: number, lng: number) => void) => {
         setLoading(true);
         if (!navigator.geolocation) {
-            alert("您的瀏覽器不支持定位功能");
+            alert("哎呀！瀏覽器似乎不支援定位唷 😅");
             setLoading(false);
             return;
         }
@@ -156,7 +154,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             },
             (error) => {
                 console.error("Geolocation error:", error);
-                alert("無法獲取位置資訊，請確認 GPS 已開啟並且網頁有定位授權。");
+                alert("找不到位置！請確認 GPS 已經打開啦 🗺️");
                 setLoading(false);
             },
             { enableHighAccuracy: true }
@@ -169,7 +167,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             setFoundLight(light);
             setSearchEdit({ lat: formatCoord(light.lat), lng: formatCoord(light.lng) });
         } else {
-            alert("查無此路燈編號");
+            alert("找不到這盞路燈，是不是打錯了呢？ 🤔");
             setFoundLight(null);
         }
     };
@@ -192,7 +190,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 const coords = extractGPSSimplified(arrayBuffer);
                 if (coords) {
                     setNewLightEdit({ lat: coords.lat.toFixed(5), lng: coords.lng.toFixed(5) });
-                    alert("成功從照片 EXIF 提取座標！");
+                    alert("哇！成功從照片裡面找到座標囉 🎉");
                 }
             }
         } catch (err) {
@@ -269,7 +267,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
     const handleSave = async (id: string, lat: string, lng: string, options?: { villageCode?: string, action?: string, beforeLat?: string, beforeLng?: string, time?: string, image?: string }) => {
         if (!GAS_WEB_APP_URL) {
-            alert("尚未設定 GAS URL");
+            alert("還沒有設定好存檔的連結耶！");
             return;
         }
 
@@ -309,12 +307,12 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             }
 
             setShowConfirm(null);
-            setToast({ message: "資料已成功同步！", type: 'success' });
+            setToast({ message: "太棒了！存檔完成囉 🌟", type: 'success' });
             setTimeout(() => setToast(null), 3000);
             fetchHistory();
         } catch (error) {
             console.error("Save error:", error);
-            setToast({ message: "儲存失敗，請檢查網路。", type: 'error' });
+            setToast({ message: "糟糕！網路怪怪的，存檔失敗了 😿", type: 'error' });
             setTimeout(() => setToast(null), 3000);
         } finally {
             setIsSaving(false);
@@ -323,7 +321,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
     const handleBatchDelete = async () => {
         if (!selectedHistory.size) return;
-        if (!confirm(`確定要刪除選中的 ${selectedHistory.size} 筆紀錄嗎？`)) return;
+        if (!confirm(`確定要把這 ${selectedHistory.size} 筆紀錄清空嗎？🧹`)) return;
 
         setIsSaving(true);
         const items = Array.from(selectedHistory).map(idx => {
@@ -338,7 +336,8 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'batchDelete', items })
             });
-            alert("多筆紀錄刪除成功！");
+            setToast({ message: "咻～紀錄已經被清乾淨了 ✨", type: 'success' });
+            setTimeout(() => setToast(null), 3000);
             setSelectedHistory(new Set());
             fetchHistory();
         } catch (err) {
@@ -365,230 +364,203 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     };
 
     return (
-        <div className="h-full w-full bg-slate-50 flex flex-col font-sans">
-            {/* Header */}
-            <header className="bg-white/80 backdrop-blur-md px-4 py-4 border-b border-slate-100 sticky top-0 z-30">
-                <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={onBack}
-                            className="p-2 hover:bg-slate-100 rounded-2xl transition-all active:scale-90 text-slate-500"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <div>
-                            <h1 className="text-xl font-black text-slate-900 tracking-tight">置換系統</h1>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">資料置換</p>
-                        </div>
-                    </div>
+        <div className="h-full w-full bg-[#FFF9F2] flex flex-col font-sans text-slate-700 overflow-hidden selection:bg-[#FFC9B3] selection:text-slate-900">
+            {/* Soft, friendly header */}
+            <header className="bg-white/60 backdrop-blur-2xl px-5 py-4 border-b border-orange-100/50 sticky top-0 z-30 shadow-[0_4px_20px_rgb(255,142,113,0.03)]">
+                <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
+                    <button
+                        onClick={onBack}
+                        className="flex items-center gap-2 p-2.5 -ml-2.5 bg-orange-50 hover:bg-orange-100 text-[#FF8C69] rounded-2xl transition-all active:scale-95"
+                    >
+                        <ChevronLeft className="w-6 h-6" strokeWidth={3} />
+                    </button>
 
-                    <div className="flex items-center gap-2">
-                        <div className="text-right hidden sm:block">
-                            <div className={`text-[10px] font-black uppercase tracking-widest flex items-center justify-end gap-1.5 ${locationInfo ? 'text-indigo-600' : 'text-slate-300'}`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${locationInfo ? 'bg-emerald-500 animate-pulse' : 'bg-slate-200'}`} />
-                                {locationInfo ? 'GPS 已啟動' : 'GPS 待命'}
-                            </div>
-                            {locationInfo && (
-                                <div className="text-[9px] font-mono text-slate-400">
-                                    {locationInfo.lat}, {locationInfo.lng}
-                                </div>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => getDeviceLocation()}
-                            className={`p-3 rounded-2xl transition-all ${locationInfo ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-slate-100 text-slate-400'} hover:scale-105 active:scale-95 group relative overflow-hidden`}
-                        >
-                            {locationInfo && (
-                                <motion.div
-                                    initial={{ x: '-100%' }}
-                                    animate={{ x: '100%' }}
-                                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                                    className="absolute inset-0 bg-white/10 skew-x-12"
-                                />
-                            )}
-                            <Crosshair className={`w-5 h-5 relative z-10 ${loading ? 'animate-spin' : ''}`} />
-                        </button>
-                    </div>
+                    <h1 className="text-xl font-extrabold text-[#FF8C69] tracking-wider flex items-center gap-2 drop-shadow-sm">
+                        <Sun className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                        資料置換小幫手
+                    </h1>
+
+                    <button
+                        onClick={() => getDeviceLocation()}
+                        className="p-3 bg-white hover:bg-orange-50/50 text-slate-400 hover:text-[#FF8C69] rounded-2xl transition-all active:scale-95 shadow-sm border border-slate-100"
+                        title="重新看看我在哪"
+                    >
+                        <Crosshair className={`w-5 h-5 ${loading ? 'animate-spin text-[#FF8C69]' : ''}`} strokeWidth={2.5} />
+                    </button>
                 </div>
 
-                {/* Tab Switcher */}
-                <div className="max-w-lg mx-auto mt-4">
-                    <div className="flex bg-slate-100/50 p-1 rounded-2xl relative">
-                        <motion.div
-                            layoutId="activeTab"
-                            className="absolute inset-y-1 bg-white rounded-xl shadow-sm z-0"
-                            style={{
-                                width: 'calc(50% - 4px)',
-                                left: activeTab === 'edit' ? '4px' : 'calc(50% + 0px)'
-                            }}
-                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                <div className="max-w-2xl mx-auto w-full flex items-center gap-2 mt-4 text-[13px] font-bold">
+                    <div className="flex-1 bg-white p-1.5 rounded-3xl shadow-sm border border-orange-50/50 flex gap-1 relative z-0">
+                        <div
+                            className="absolute top-1.5 bottom-1.5 w-[calc(50%-4px)] bg-[#FF8C69] rounded-[20px] transition-transform duration-300 ease-spring shadow-md -z-10"
+                            style={{ transform: activeTab === 'edit' ? 'translateX(0)' : 'translateX(calc(100% + 2px))' }}
                         />
                         <button
                             onClick={() => setActiveTab('edit')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-black z-10 transition-colors ${activeTab === 'edit' ? 'text-indigo-600' : 'text-slate-400'}`}
+                            className={`flex-1 py-2.5 rounded-[20px] flex justify-center items-center gap-2 transition-colors duration-300 ${activeTab === 'edit' ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            <RefreshCw className="w-3.5 h-3.5" /> 編輯資料
+                            <span className={activeTab === 'edit' ? 'drop-shadow-sm' : ''}>✏️ 更新與新增</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('history')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-black z-10 transition-colors ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-400'}`}
+                            className={`flex-1 py-2.5 rounded-[20px] flex justify-center items-center gap-2 transition-colors duration-300 ${activeTab === 'history' ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            <History className="w-3.5 h-3.5" /> 歷史紀錄
+                            <span className={activeTab === 'history' ? 'drop-shadow-sm' : ''}>📖 看看紀錄</span>
                         </button>
                     </div>
                 </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto pb-24">
-                <div className="max-w-lg mx-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto w-full scroll-smooth pt-4" style={{ scrollbarWidth: 'none' }}>
+                <div className="max-w-2xl mx-auto px-5 space-y-6 pb-28">
+                    {/* Location Badge */}
+                    <AnimatePresence>
+                        {locationInfo && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex items-center justify-center -mb-2"
+                            >
+                                <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold border border-green-200/50 shadow-sm flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                    找到您囉！目前定位中
+                                </span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     <AnimatePresence mode="wait">
                         {activeTab === 'edit' ? (
                             <motion.div
                                 key="edit"
-                                initial={{ opacity: 0, y: 10 }}
+                                initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="space-y-8"
+                                exit={{ opacity: 0, y: -20 }}
+                                className="space-y-6"
                             >
-                                {/* Search Section */}
-                                <section className="bg-white rounded-[2.5rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6 relative overflow-hidden">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            <Search className="w-4 h-4" /> 修改現有路燈
-                                        </h2>
+                                {/* Search Card */}
+                                <section className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(255,140,105,0.06)] border-2 border-orange-50/50">
+                                    <div className="flex items-center gap-3 mb-5">
+                                        <div className="bg-orange-100 text-[#FF8C69] p-3 rounded-2xl rotate-3">
+                                            <Search className="w-6 h-6" strokeWidth={2.5} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-extrabold text-slate-800 tracking-wide">尋找路燈</h2>
+                                            <p className="text-[13px] text-slate-400 font-medium">幫現有的路燈換個精準的位置！</p>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-4">
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-3">
                                             <div className="relative flex-1">
                                                 <input
                                                     type="text"
                                                     placeholder="輸入路燈編號..."
-                                                    className="w-full pl-5 pr-12 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                                    className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 hover:border-orange-100 focus:bg-white focus:border-[#FF8C69] rounded-[1.2rem] text-[15px] font-bold text-slate-800 placeholder:text-slate-300 outline-none transition-all shadow-inner"
                                                     value={searchId}
                                                     onChange={(e) => setSearchId(e.target.value)}
                                                     onKeyDown={(e) => e.key === 'Enter' && handleSearchId()}
                                                 />
                                                 {searchId && (
-                                                    <button onClick={() => setSearchId('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-slate-500">
-                                                        <X className="w-4 h-4" />
+                                                    <button onClick={() => setSearchId('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-full transition-colors">
+                                                        <X className="w-3.5 h-3.5" strokeWidth={3} />
                                                     </button>
                                                 )}
                                             </div>
                                             <button
                                                 onClick={handleSearchId}
-                                                className="bg-slate-900 text-white px-6 rounded-2xl text-xs font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-slate-200"
+                                                className="px-6 py-3.5 bg-[#FF8C69] hover:bg-[#FF7A52] active:scale-95 text-white font-bold text-[15px] rounded-[1.2rem] shadow-md shadow-orange-200 transition-all"
                                             >
-                                                搜尋
+                                                查查看
                                             </button>
                                         </div>
 
-                                        <div className="bg-slate-50/50 rounded-3xl p-4 border border-slate-100 space-y-4">
-                                            {/* Map Placeholder */}
-                                            <div className="h-24 bg-slate-100 rounded-2xl relative overflow-hidden border border-slate-200/50 group">
-                                                <div className="absolute inset-0 opacity-20">
-                                                    <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                                        <div className="bg-[#FFFDF9] rounded-[1.5rem] p-4 border-2 border-dashed border-slate-200">
+                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Longitude)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={searchEdit.lng}
+                                                        onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
+                                                        className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
+                                                        placeholder="例如: 120.xxxxx"
+                                                    />
                                                 </div>
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="relative">
-                                                        <motion.div
-                                                            animate={{ scale: [1, 1.2, 1] }}
-                                                            transition={{ repeat: Infinity, duration: 2 }}
-                                                            className="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center"
-                                                        >
-                                                            <div className="w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
-                                                        </motion.div>
-                                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 border border-indigo-500/20 rounded-full animate-ping" />
-                                                    </div>
-                                                </div>
-                                                <div className="absolute bottom-2 left-3 flex items-center gap-2">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">信號已鎖定</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">緯度</label>
-                                                    <div className="relative group">
-                                                        <input
-                                                            type="text"
-                                                            value={searchEdit.lat}
-                                                            onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })}
-                                                            className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-xs font-mono font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500/10 transition-all group-hover:border-indigo-200"
-                                                            placeholder="0.00000"
-                                                        />
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-400/30 group-focus-within:bg-indigo-500 transition-colors" />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">經度</label>
-                                                    <div className="relative group">
-                                                        <input
-                                                            type="text"
-                                                            value={searchEdit.lng}
-                                                            onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
-                                                            className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-xs font-mono font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500/10 transition-all group-hover:border-indigo-200"
-                                                            placeholder="0.00000"
-                                                        />
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-400/30 group-focus-within:bg-indigo-500 transition-colors" />
-                                                    </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Latitude)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={searchEdit.lat}
+                                                        onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })}
+                                                        className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
+                                                        placeholder="例如: 24.xxxxx"
+                                                    />
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))}
-                                                className="w-full py-3 bg-white border border-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-100 hover:text-indigo-600 transition-all active:scale-95"
+                                                className="w-full py-3 bg-white border-2 border-slate-200 hover:border-orange-200 hover:text-[#FF8C69] hover:bg-orange-50/50 text-slate-500 rounded-2xl text-sm font-extrabold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
                                             >
-                                                <Crosshair className="w-3 h-3" /> 使用當前位置
+                                                📍 幫我把目前座標填進去
                                             </button>
                                         </div>
 
                                         {foundLight && (
-                                            <div className="flex gap-2 pt-2">
+                                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex gap-3 pt-2">
                                                 <button
                                                     onClick={() => setShowConfirm({ type: 'search', id: foundLight.id, lat: searchEdit.lat, lng: searchEdit.lng })}
-                                                    className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-[0.98] transition-all"
+                                                    className="flex-1 bg-[#45CE9D] hover:bg-[#3EBC8D] active:scale-95 shadow-md shadow-emerald-200 text-white py-3.5 rounded-2xl font-extrabold text-[15px] flex items-center justify-center gap-2 transition-all"
                                                 >
-                                                    更新座標
+                                                    <CheckCircle2 className="w-5 h-5" /> 確定更新！
                                                 </button>
                                                 <button
                                                     onClick={() => {
-                                                        if (confirm(`⚠️ 確定要刪除路燈 ${foundLight.id} 嗎？`)) {
+                                                        if (confirm(`真的要把路燈 ${foundLight.id} 刪掉嗎？這不能復原唷！`)) {
                                                             handleSave(foundLight.id, "", "", { action: 'deleteLight' });
                                                         }
                                                     }}
-                                                    className="px-5 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-100 transition-colors border border-rose-100"
+                                                    className="w-16 flex items-center justify-center bg-white hover:bg-red-50 text-red-400 hover:text-red-500 border-2 border-red-100 rounded-2xl active:scale-95 transition-all"
                                                 >
                                                     <Trash2 className="w-5 h-5" />
                                                 </button>
-                                            </div>
+                                            </motion.div>
                                         )}
                                     </div>
                                 </section>
 
                                 {/* New Light Section */}
-                                <section className="bg-white rounded-[2.5rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6 relative overflow-hidden">
-                                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                        <CheckCircle className="w-4 h-4" /> 新增路燈位置
-                                    </h2>
+                                <section className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(255,140,105,0.06)] border-2 border-orange-50/50">
+                                    <div className="flex items-center justify-between mb-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-emerald-100 text-[#45CE9D] p-3 rounded-2xl -rotate-3">
+                                                <Smile className="w-6 h-6" strokeWidth={2.5} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-xl font-extrabold text-slate-800 tracking-wide">新增路燈檔</h2>
+                                                <p className="text-[13px] text-slate-400 font-medium">發現新的路燈！趕快來建檔吧～</p>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <div className="grid grid-cols-3 gap-3">
+                                    {/* Action Chips */}
+                                    <div className="grid grid-cols-3 gap-3 mb-6">
                                         <button
                                             onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))}
-                                            className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-[#FF8C69] hover:text-white text-[#FF8C69] rounded-2xl active:scale-95 transition-all text-sm font-bold shadow-sm"
                                         >
-                                            <MapPin className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">定位</span>
+                                            <MapPin className="w-7 h-7" strokeWidth={2.5} />
+                                            GPS
                                         </button>
 
                                         <input type="file" id="photo-upload" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'file')} />
                                         <button
                                             onClick={() => document.getElementById('photo-upload')?.click()}
                                             disabled={isProcessingImage}
-                                            className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-all group disabled:opacity-50"
+                                            className="flex flex-col items-center gap-2 p-4 bg-sky-50 hover:bg-[#52C5F4] hover:text-white text-[#52C5F4] rounded-2xl active:scale-95 transition-all text-sm font-bold shadow-sm disabled:opacity-50"
                                         >
-                                            <ImageIcon className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{isProcessingImage ? '處理中' : '相簿'}</span>
+                                            {isProcessingImage ? <RefreshCw className="w-7 h-7 animate-spin" /> : <ImageIcon className="w-7 h-7" strokeWidth={2.5} />}
+                                            選相片
                                         </button>
 
                                         <input type="file" id="camera-capture" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileChange(e, 'camera')} />
@@ -597,158 +569,126 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                 getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }));
                                                 document.getElementById('camera-capture')?.click();
                                             }}
-                                            className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-sky-50 hover:text-sky-600 transition-all group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-[#A88AE6] hover:text-white text-[#A88AE6] rounded-2xl active:scale-95 transition-all text-sm font-bold shadow-sm"
                                         >
-                                            <Camera className="w-5 h-5 text-slate-400 group-hover:text-sky-600 transition-colors" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">拍照</span>
+                                            <Camera className="w-7 h-7" strokeWidth={2.5} />
+                                            拍張照
                                         </button>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div className="bg-slate-50/50 rounded-3xl p-5 border border-slate-100 space-y-5">
-                                            {/* Map Placeholder */}
-                                            <div className="h-24 bg-slate-100 rounded-2xl relative overflow-hidden border border-slate-200/50 group">
-                                                <div className="absolute inset-0 opacity-20">
-                                                    <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
-                                                </div>
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="relative">
-                                                        <motion.div
-                                                            animate={{ scale: [1, 1.2, 1] }}
-                                                            transition={{ repeat: Infinity, duration: 2 }}
-                                                            className="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center"
-                                                        >
-                                                            <div className="w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
-                                                        </motion.div>
-                                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 border border-indigo-500/20 rounded-full animate-ping" />
-                                                    </div>
-                                                </div>
-                                                <div className="absolute bottom-2 left-3 flex items-center gap-2">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">信號已鎖定</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between px-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">村里與編號</label>
-                                                    {detectedVillage && (
-                                                        <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                                                            自動偵測: {detectedVillage}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                                    <div className="bg-[#FFFDF9] rounded-[1.5rem] p-5 border-2 border-dashed border-slate-200 space-y-4">
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 space-y-1.5">
+                                                <label className="text-xs font-extrabold text-slate-400 ml-2">村里</label>
+                                                <div className="relative">
                                                     <select
                                                         value={manualVillage || detectedVillage || ''}
                                                         onChange={(e) => setManualVillage(e.target.value)}
-                                                        className="bg-slate-50 border-r border-slate-100 px-4 py-3 text-xs font-black text-slate-600 outline-none appearance-none"
+                                                        className="w-full pl-4 pr-10 py-3.5 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none appearance-none shadow-sm transition-all"
                                                     >
-                                                        <option value="" disabled>村里</option>
+                                                        <option value="" disabled>請選擇...</option>
                                                         {Object.keys(VILLAGE_CODES).map(v => <option key={v} value={v}>{v}</option>)}
                                                     </select>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="編號 (留空自動產生)"
-                                                        className="w-full px-4 py-3 text-sm font-bold text-slate-700 outline-none placeholder:text-slate-300"
-                                                        value={newLightId}
-                                                        onChange={(e) => setNewLightId(e.target.value)}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">緯度</label>
-                                                    <div className="relative group">
-                                                        <input
-                                                            type="text"
-                                                            value={newLightEdit.lat}
-                                                            onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })}
-                                                            className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-xs font-mono font-bold text-indigo-600 outline-none group-focus-within:ring-2 group-focus-within:ring-indigo-500/10 transition-all"
-                                                            placeholder="0.00000"
-                                                        />
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-400/30 group-focus-within:bg-indigo-500 transition-colors" />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">經度</label>
-                                                    <div className="relative group">
-                                                        <input
-                                                            type="text"
-                                                            value={newLightEdit.lng}
-                                                            onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })}
-                                                            className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-xs font-mono font-bold text-indigo-600 outline-none group-focus-within:ring-2 group-focus-within:ring-indigo-500/10 transition-all"
-                                                            placeholder="0.00000"
-                                                        />
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-400/30 group-focus-within:bg-indigo-500 transition-colors" />
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none bg-slate-100 p-1.5 rounded-xl">
+                                                        <ChevronLeft className="w-4 h-4 text-slate-500 -rotate-90" strokeWidth={3} />
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            {selectedImage && (
-                                                <div className="relative rounded-2xl overflow-hidden border-2 border-white shadow-lg">
-                                                    <img src={selectedImage} alt="Preview" className="w-full h-48 object-cover" referrerPolicy="no-referrer" />
-                                                    <button
-                                                        onClick={() => setSelectedImage(null)}
-                                                        className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md text-white p-2 rounded-xl hover:bg-slate-900 transition-colors"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            )}
+                                            <div className="flex-1 space-y-1.5">
+                                                <label className="text-xs font-extrabold text-slate-400 ml-2">路燈編號</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-4 py-3.5 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-300 placeholder:font-medium"
+                                                    value={newLightId}
+                                                    onChange={(e) => setNewLightId(e.target.value)}
+                                                    placeholder="留空自動產生"
+                                                />
+                                            </div>
                                         </div>
 
-                                        <button
-                                            onClick={() => {
-                                                const finalVillage = manualVillage || detectedVillage;
-                                                if (!newLightEdit.lat || !finalVillage) { alert("請先定位並選擇村里"); return; }
-                                                setShowConfirm({ type: 'new', id: newLightId || '自動產生中...', lat: newLightEdit.lat, lng: newLightEdit.lng });
-                                            }}
-                                            className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                                        >
-                                            確認新增路燈 <ArrowRight className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 space-y-1.5">
+                                                <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
+                                                    value={newLightEdit.lng}
+                                                    onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })}
+                                                    placeholder="必填唷"
+                                                />
+                                            </div>
+                                            <div className="flex-1 space-y-1.5">
+                                                <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Lat)</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
+                                                    value={newLightEdit.lat}
+                                                    onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })}
+                                                    placeholder="必填唷"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {selectedImage && (
+                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-2">
+                                                    <div className="relative rounded-[1.5rem] overflow-hidden bg-slate-100 border-2 border-slate-200 p-2 text-center group">
+                                                        <img src={selectedImage} alt="Preview" className="w-full h-[180px] object-cover rounded-xl shadow-sm" referrerPolicy="no-referrer" />
+                                                        <button
+                                                            onClick={() => setSelectedImage(null)}
+                                                            className="absolute top-4 right-4 bg-white hover:bg-red-50 text-slate-500 hover:text-red-400 p-2 rounded-full shadow-lg active:scale-90 transition-all"
+                                                        >
+                                                            <X className="w-5 h-5" strokeWidth={3} />
+                                                        </button>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
+
+                                    <button
+                                        onClick={() => {
+                                            const finalVillage = manualVillage || detectedVillage;
+                                            if (!newLightEdit.lat || !finalVillage) { alert("矮額！有欄位忘記填囉，請確認一下喔 🙈"); return; }
+                                            setShowConfirm({ type: 'new', id: newLightId || '系統會自動取名', lat: newLightEdit.lat, lng: newLightEdit.lng });
+                                        }}
+                                        className="w-full bg-[#FF8C69] hover:bg-[#FF7A52] active:scale-95 shadow-lg shadow-orange-200 text-white py-4 rounded-[1.5rem] font-extrabold text-[16px] flex items-center justify-center gap-2 mt-6 transition-all"
+                                    >
+                                        🚀 確定送出資料
+                                    </button>
                                 </section>
                             </motion.div>
                         ) : (
                             <motion.div
                                 key="history"
-                                initial={{ opacity: 0, y: 10 }}
+                                initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="space-y-6"
+                                exit={{ opacity: 0, y: -20 }}
+                                className="space-y-5"
                             >
-                                <div className="flex items-center justify-between px-2">
-                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">最近更動清單</h2>
-                                    <button
-                                        onClick={() => { setLoading(true); fetchHistory().finally(() => setLoading(false)); }}
-                                        className="p-2 bg-white rounded-xl shadow-sm border border-slate-100 text-indigo-500 active:rotate-180 transition-transform duration-500"
-                                    >
-                                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                                    </button>
+                                <div className="flex justify-between items-center px-2">
+                                    <h2 className="text-sm font-extrabold text-slate-400 uppercase tracking-widest pl-2">所有編輯紀錄</h2>
                                 </div>
 
                                 <AnimatePresence>
                                     {selectedHistory.size > 0 && (
                                         <motion.div
-                                            initial={{ opacity: 0, y: -20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -20 }}
-                                            className="bg-indigo-600 text-white p-4 rounded-[2rem] shadow-xl shadow-indigo-100 flex items-center justify-between sticky top-4 z-20"
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            className="bg-red-50 border-2 border-red-100 text-red-600 px-5 py-3.5 rounded-3xl shadow-sm flex items-center justify-between sticky top-[80px] z-20"
                                         >
-                                            <div className="flex items-center gap-4">
-                                                <button onClick={toggleSelectAll} className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center">
-                                                    {selectedHistory.size === history.length ? <X className="w-3 h-3" /> : <div className="w-2 h-2 bg-white rounded-full" />}
+                                            <div className="flex items-center gap-3">
+                                                <button onClick={toggleSelectAll} className="w-7 h-7 rounded-xl flex items-center justify-center bg-white shadow-sm hover:scale-105 transition-transform text-red-500">
+                                                    {selectedHistory.size === history.length ? <X className="w-4 h-4" strokeWidth={3} /> : <Check className="w-4 h-4" strokeWidth={3} />}
                                                 </button>
-                                                <span className="text-xs font-black uppercase tracking-widest">已選 {selectedHistory.size} 筆</span>
+                                                <span className="text-sm font-extrabold pb-0.5">選了 {selectedHistory.size} 筆</span>
                                             </div>
                                             <button
                                                 onClick={handleBatchDelete}
-                                                className="bg-white text-rose-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                                                className="bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm shadow-red-200 hover:bg-red-600 active:scale-95 transition-all"
                                             >
-                                                <Trash2 className="w-3.5 h-3.5" /> 批次刪除
+                                                一起刪掉！
                                             </button>
                                         </motion.div>
                                     )}
@@ -756,93 +696,87 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
                                 <div className="space-y-4">
                                     {history.length === 0 ? (
-                                        <div className="py-32 text-center space-y-6">
-                                            <div className="relative mx-auto w-24 h-24">
-                                                <motion.div
-                                                    animate={{ rotate: 360 }}
-                                                    transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-                                                    className="absolute inset-0 border-2 border-dashed border-slate-200 rounded-[2.5rem]"
-                                                />
-                                                <div className="absolute inset-0 flex items-center justify-center text-slate-200">
-                                                    <History className="w-10 h-10" />
-                                                </div>
+                                        <div className="py-20 flex flex-col items-center justify-center text-slate-300">
+                                            <div className="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
+                                                <History className="w-10 h-10 text-slate-200" strokeWidth={2.5} />
                                             </div>
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">目前無編輯紀錄</p>
-                                                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">查無歷史紀錄</p>
-                                            </div>
+                                            <p className="text-lg font-extrabold text-slate-400">這裡空空的耶</p>
+                                            <p className="text-sm font-bold mt-1">等您來幫路燈建檔唷！</p>
                                         </div>
                                     ) : (
                                         history.map((record, idx) => (
-                                            <motion.div
+                                            <div
                                                 key={idx}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: idx * 0.05 }}
-                                                className={`bg-white rounded-[2.5rem] p-6 border transition-all duration-300 ${selectedHistory.has(idx) ? 'border-indigo-400 ring-4 ring-indigo-500/5 shadow-xl' : 'border-slate-100 shadow-sm'} space-y-4`}
+                                                className={`bg-white rounded-[2rem] p-5 shadow-sm transition-all duration-300 ${selectedHistory.has(idx) ? 'border-2 border-[#FF8C69] ring-4 ring-orange-50 scale-[1.02]' : 'border-2 border-slate-100 hover:border-orange-100'}`}
                                             >
                                                 <div className="flex items-start gap-4">
-                                                    <button
-                                                        onClick={() => toggleSelect(idx)}
-                                                        className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all ${selectedHistory.has(idx) ? 'bg-indigo-600 border-indigo-600' : 'bg-slate-50 border-slate-100'}`}
-                                                    >
-                                                        {selectedHistory.has(idx) && <Check className="w-3 h-3 text-white" />}
-                                                    </button>
+                                                    <div className="mt-1">
+                                                        <button
+                                                            onClick={() => toggleSelect(idx)}
+                                                            className={`w-7 h-7 rounded-[10px] flex items-center justify-center transition-all ${selectedHistory.has(idx) ? 'bg-[#FF8C69] text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}
+                                                        >
+                                                            <Check className="w-4 h-4" strokeWidth={3} />
+                                                        </button>
+                                                    </div>
 
-                                                    <div className="flex-1 space-y-4">
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="space-y-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full uppercase tracking-widest">{record.修改時間 || record.時間}</span>
-                                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${record.異動類型 === '新增' || record.操作類型 === '新增' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div>
+                                                                <h3 className="text-[17px] font-black text-slate-800 tracking-tight">
+                                                                    路燈 <span className="text-[#FF8C69]">{record.路燈編號}</span>
+                                                                </h3>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className="text-xs font-bold text-slate-400">{record.修改時間 || record.時間}</span>
+                                                                    <span className={`text-[10px] px-2.5 py-1 rounded-xl font-extrabold ${record.異動類型 === '新增' || record.操作類型 === '新增' ? 'bg-emerald-100 text-emerald-600' : 'bg-sky-100 text-sky-600'}`}>
                                                                         {record.異動類型 || record.操作類型}
                                                                     </span>
                                                                 </div>
-                                                                <h3 className="text-xl font-black text-slate-800 tracking-tight">路燈 {record.路燈編號}</h3>
                                                             </div>
-                                                            <button onClick={() => { if (confirm('確定刪除？')) handleSave(record.路燈編號, "", "", { action: 'delete', time: record.修改時間 || record.時間 }) }} className="p-2 text-slate-200 hover:text-rose-500 transition-colors">
-                                                                <Trash2 className="w-4 h-4" />
+                                                            <button
+                                                                onClick={() => { if (confirm('要把這筆不見嗎？🥺')) handleSave(record.路燈編號, "", "", { action: 'delete', time: record.修改時間 || record.時間 }) }}
+                                                                className="w-10 h-10 bg-slate-50 hover:bg-red-50 text-slate-300 hover:text-red-400 rounded-2xl flex items-center justify-center transition-all active:scale-95"
+                                                            >
+                                                                <Trash2 className="w-5 h-5" />
                                                             </button>
                                                         </div>
 
-                                                        <div className="grid grid-cols-2 gap-3">
-                                                            <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100 relative group overflow-hidden">
-                                                                <div className="absolute -right-2 -bottom-2 opacity-5 group-hover:opacity-10 transition-opacity">
-                                                                    <MapPin className="w-12 h-12" />
-                                                                </div>
-                                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">原始座標</p>
-                                                                <p className="text-[10px] font-mono font-bold text-slate-500 leading-tight relative z-10">
+                                                        {/* Diff Cards */}
+                                                        <div className="grid grid-cols-2 gap-3 mb-4">
+                                                            <div className="bg-slate-50 border-2 border-slate-100 p-3 rounded-2xl relative overflow-hidden">
+                                                                <p className="text-[11px] font-extrabold text-slate-400 mb-1">之前的位置</p>
+                                                                <p className="text-xs font-mono font-bold text-slate-600">
                                                                     {formatCoord(record.原本緯度 || record.原緯度 || "---")}<br />
                                                                     {formatCoord(record.原本經度 || record.原經度 || "---")}
                                                                 </p>
                                                             </div>
-                                                            <div className="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100/20 relative group overflow-hidden">
-                                                                <div className="absolute -right-2 -bottom-2 opacity-5 group-hover:opacity-10 transition-opacity">
-                                                                    <Crosshair className="w-12 h-12 text-indigo-600" />
+                                                            <div className="bg-orange-50 border-2 border-orange-100/50 p-3 rounded-2xl relative overflow-hidden">
+                                                                <div className="absolute -right-2 -bottom-2 opacity-10">
+                                                                    <MapPin className="w-10 h-10 text-[#FF8C69]" />
                                                                 </div>
-                                                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">更新座標</p>
-                                                                <p className="text-[10px] font-mono font-bold text-indigo-600 leading-tight relative z-10">
+                                                                <p className="text-[11px] font-extrabold text-[#FF8C69] mb-1">後來的位置</p>
+                                                                <p className="text-xs font-mono font-extrabold text-[#FF8C69]">
                                                                     {formatCoord(record.更新緯度 || record.新緯度 || "---")}<br />
                                                                     {formatCoord(record.更新經度 || record.新經度 || "---")}
                                                                 </p>
                                                             </div>
                                                         </div>
 
+                                                        {/* Actions */}
                                                         <div className="flex gap-2">
                                                             {(record.原本緯度 || record.原緯度) && (
-                                                                <button onClick={() => { if (confirm(`確定復原？`)) handleSave(record.路燈編號, (record.原本緯度 || record.原緯度), (record.原本經度 || record.原經度), { action: 'restore', beforeLat: (record.更新緯度 || record.新緯度), beforeLng: (record.更新經度 || record.新經度) }) }} className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-500 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-colors">
-                                                                    <Undo2 className="w-3 h-3" /> 復原
+                                                                <button onClick={() => { if (confirm(`還原回之前的位置嗎？`)) handleSave(record.路燈編號, (record.原本緯度 || record.原緯度), (record.原本經度 || record.原經度), { action: 'restore', beforeLat: (record.更新緯度 || record.新緯度), beforeLng: (record.更新經度 || record.新經度) }) }} className="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 border-2 border-slate-100 rounded-[14px] text-xs font-extrabold text-slate-500 flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                                                                    <Undo2 className="w-4 h-4" strokeWidth={2.5} /> 還原
                                                                 </button>
                                                             )}
                                                             {record.照片連結 && (
-                                                                <a href={record.照片連結} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-colors">
-                                                                    <ExternalLink className="w-3 h-3" /> 照片
+                                                                <a href={record.照片連結} target="_blank" rel="noopener noreferrer" className="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 border-2 border-slate-100 rounded-[14px] text-xs font-extrabold text-slate-500 flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                                                                    <ImageIcon className="w-4 h-4" strokeWidth={2.5} /> 照片
                                                                 </a>
                                                             )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </motion.div>
+                                            </div>
                                         ))
                                     )}
                                 </div>
@@ -852,101 +786,89 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 </div>
             </div>
 
+            {/* Cute Toast Notification */}
             <AnimatePresence>
                 {toast && (
                     <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        initial={{ opacity: 0, y: 30, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[110] w-[calc(100%-3rem)] max-w-xs"
+                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[110]"
                     >
-                        <div className={`flex items-center gap-3 p-4 rounded-3xl shadow-2xl backdrop-blur-xl border ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' : 'bg-rose-500/90 border-rose-400/50 text-white'}`}>
-                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                                {toast.type === 'success' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                        <div className="flex items-center gap-3 bg-white pl-3 pr-5 py-3 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.1)] border-2 border-slate-50 text-slate-700 min-w-max">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${toast.type === 'success' ? 'bg-emerald-100 text-emerald-500' : 'bg-red-100 text-red-500'}`}>
+                                {toast.type === 'success' ? <Smile className="w-6 h-6" strokeWidth={2.5} /> : <X className="w-6 h-6" strokeWidth={2.5} />}
                             </div>
-                            <div className="flex-1">
-                                <p className="text-xs font-black uppercase tracking-widest leading-none mb-1">{toast.type === 'success' ? '成功' : '錯誤'}</p>
-                                <p className="text-sm font-bold">{toast.message}</p>
-                            </div>
+                            <p className="text-[15px] font-extrabold">{toast.message}</p>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
+            {/* Overlay / Loading Cute Character */}
             <AnimatePresence>
                 {isSaving && !showConfirm && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-xl"
+                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/70 backdrop-blur-md"
                     >
-                        <div className="bg-white rounded-[3rem] p-10 flex flex-col items-center gap-6 shadow-2xl border border-white/20">
+                        <div className="bg-white rounded-[2rem] p-8 flex flex-col items-center gap-5 shadow-[0_20px_60px_rgba(0,0,0,0.08)] border-2 border-orange-50/50">
                             <div className="relative">
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                                    className="w-16 h-16 border-4 border-slate-100 border-t-indigo-600 rounded-full"
-                                />
+                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="w-16 h-16 border-[5px] border-orange-100 border-t-[#FF8C69] rounded-full" />
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <Cloud className="w-6 h-6 text-indigo-600 animate-pulse" />
+                                    <Cloud className="w-6 h-6 text-[#FF8C69] animate-bounce" fill="#FF8C69" fillOpacity="0.2" />
                                 </div>
                             </div>
-                            <div className="text-center space-y-2">
-                                <h3 className="text-lg font-black text-slate-900 tracking-tight">資料同步中</h3>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">資料同步中...</p>
-                            </div>
+                            <p className="text-[17px] font-extrabold text-slate-700">正在努力幫您存檔囉... 🏃‍♂️</p>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
+            {/* Confirm Dialog - Friendly Card */}
             <AnimatePresence>
                 {showConfirm && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-slate-900/80 backdrop-blur-xl"
+                        className="fixed inset-0 z-50 flex items-center justify-center px-5 bg-slate-900/40 backdrop-blur-sm"
                     >
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="bg-white rounded-[3rem] p-8 w-full max-w-sm shadow-2xl space-y-8 border border-white/20"
+                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            transition={{ type: "spring", bounce: 0.5 }}
+                            className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl flex flex-col p-6 border-4 border-white"
                         >
-                            <div className="text-center space-y-4">
-                                <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto relative overflow-hidden">
-                                    <Save className="w-8 h-8 relative z-10" />
-                                    {isSaving && (
-                                        <motion.div
-                                            animate={{ y: ["100%", "-100%"] }}
-                                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                                            className="absolute inset-0 bg-indigo-100/50"
-                                        />
-                                    )}
+                            <div className="flex flex-col items-center text-center gap-2 mb-6 mt-2">
+                                <div className="w-20 h-20 bg-orange-50 text-[#FF8C69] rounded-[2rem] flex items-center justify-center mb-2 rotate-3 shadow-inner">
+                                    <CheckCircle2 className="w-10 h-10" strokeWidth={2.5} />
                                 </div>
-                                <div className="space-y-1">
-                                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">存檔確認</h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">確認同步資料</p>
-                                </div>
+                                <h3 className="text-2xl font-black text-slate-800">準備好要存檔了嗎？</h3>
+                                <p className="text-sm font-bold text-slate-400">
+                                    再幫我確認一下資料對不對唷 👀
+                                </p>
                             </div>
 
-                            <div className="bg-slate-50 rounded-[2rem] p-6 text-center space-y-3 border border-slate-100">
-                                <div className="text-xl font-black text-slate-800 tracking-tight">路燈 {showConfirm.id}</div>
-                                <div className="flex flex-wrap items-center justify-center gap-2">
-                                    {showConfirm.type === 'new' && (manualVillage || detectedVillage) && (
-                                        <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest">
-                                            {manualVillage || detectedVillage}
-                                        </span>
-                                    )}
-                                    <span className="text-[9px] font-black text-slate-400 bg-white border border-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
-                                        {showConfirm.type === 'new' ? '新增資料' : '更新座標'}
+                            <div className="bg-[#FFFDF9] rounded-3xl p-5 border-2 border-dashed border-[#FFC9B3] mb-6 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-white/50 rounded-full -mr-8 -mt-8 blur-xl" />
+                                <div className="flex items-center gap-3 mb-3 relative z-10">
+                                    <h4 className="font-black text-lg text-slate-700">路燈 {showConfirm.id}</h4>
+                                    <span className="text-xs font-bold text-[#FF8C69] border-2 border-[#FFC9B3] bg-white rounded-xl px-2 py-0.5">
+                                        {showConfirm.type === 'new' ? '建立紀錄' : '修正座標'}
                                     </span>
                                 </div>
-                                <div className="text-slate-400 font-mono text-[10px] pt-2 leading-relaxed">
-                                    LAT: {showConfirm.lat}<br />
-                                    LNG: {showConfirm.lng}
+                                {showConfirm.type === 'new' && (manualVillage || detectedVillage) && (
+                                    <div className="text-[13px] font-bold text-slate-500 mb-2 relative z-10">
+                                        📍 被分配到：<span className="text-slate-700">{manualVillage || detectedVillage}</span>
+                                    </div>
+                                )}
+                                <div className="text-[13px] font-mono font-bold text-slate-500 bg-white p-3 rounded-2xl border-2 border-slate-100 relative z-10 shadow-sm leading-relaxed">
+                                    <div className="flex justify-between"><span>Lat:</span> <span className="text-slate-700">{showConfirm.lat}</span></div>
+                                    <div className="flex justify-between"><span>Lng:</span> <span className="text-slate-700">{showConfirm.lng}</span></div>
                                 </div>
                             </div>
 
@@ -960,16 +882,16 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                             action: showConfirm.type === 'new' ? 'new' : 'update'
                                         });
                                     }}
-                                    className={`w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-600 hover:shadow-indigo-100 active:scale-95'}`}
+                                    className="w-full py-4 bg-[#FF8C69] hover:bg-[#FF7A52] active:scale-95 text-white font-extrabold text-[17px] rounded-[1.5rem] shadow-lg shadow-orange-200 transition-all disabled:opacity-50"
                                 >
-                                    {isSaving ? "同步中..." : "確定存檔同步"}
+                                    {isSaving ? "處理中..." : "沒錯，幫我存檔！"}
                                 </button>
                                 <button
                                     disabled={isSaving}
                                     onClick={() => setShowConfirm(null)}
-                                    className="w-full bg-slate-100 text-slate-400 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-slate-200 hover:text-slate-600 transition-all active:scale-95"
+                                    className="w-full py-4 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 font-extrabold text-[17px] rounded-[1.5rem] transition-all active:scale-95"
                                 >
-                                    返回修改
+                                    等一下，我再看一下
                                 </button>
                             </div>
                         </motion.div>
