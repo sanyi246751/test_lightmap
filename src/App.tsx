@@ -19,24 +19,34 @@ export default function App() {
   const [villageData, setVillageData] = useState<any>(null);
 
   useEffect(() => {
-    const geojsonUrl = `${import.meta.env.BASE_URL}data/Sanyi_villages.geojson`.replace(/\/+/g, '/');
-    console.log("[App] fetching village data from:", geojsonUrl);
+    // 確保路徑處理正確，BASE_URL 通常包含 /test_lightmap/
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    const geojsonUrl = `${baseUrl}/data/Sanyi_villages.geojson`.replace(/\/+/g, '/');
+
+    console.log("[App] Attempting to fetch village data from:", geojsonUrl);
+
     fetch(geojsonUrl)
       .then(res => {
-        console.log("[App] fetch response status:", res.status, res.ok);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        console.log("[App] Fetch response status:", res.status, res.statusText);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText} at ${geojsonUrl}`);
+        }
         return res.json();
       })
       .then(data => {
-        console.log("[App] village data loaded successfully. Features count:", data?.features?.length);
         if (data && data.features) {
+          console.log("[App] Village data loaded! Features:", data.features.length);
           setVillageData(data);
         } else {
-          console.warn("[App] Loaded data does not look like valid GeoJSON features collection.");
+          console.error("[App] Invalid GeoJSON format:", data);
         }
       })
       .catch(err => {
-        console.error("[App] Error fetching village data:", err);
+        console.error("[App] CRITICAL: Failed to load village data!", err);
+        // 如果載入失敗，提供一個後門或警告，讓開發者知道是檔案路徑問題
+        if (window.location.hostname === 'localhost') {
+          console.warn("[App] TIP: On localhost, make sure public/data/Sanyi_villages.geojson exists.");
+        }
       });
 
     const params = new URLSearchParams(window.location.search);

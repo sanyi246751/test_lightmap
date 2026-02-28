@@ -69,35 +69,44 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     };
 
     const detectVillage = (lat: number, lng: number) => {
-        if (isNaN(lat) || isNaN(lng)) return null;
-        console.log('[detectVillage] called with:', lat, lng, '| villageData ready:', !!(villageData && villageData.features));
+        if (isNaN(lat) || isNaN(lng)) {
+            console.warn('[detectVillage] Received NaN coordinates:', lat, lng);
+            return null;
+        }
 
-        if (!villageData || !villageData.features) {
-            // If data not ready, we can wait. Returning null for now.
+        const isReady = !!(villageData && villageData.features);
+        console.log(`[detectVillage] Attempting detection for: ${lat.toFixed(5)}, ${lng.toFixed(5)} | Data ready: ${isReady}`);
+
+        if (!isReady) {
+            console.warn('[detectVillage] Village data not ready yet, skipping detection.');
             return null;
         }
 
         for (const feature of villageData.features) {
             const geometry = feature.geometry;
             let name = feature.properties.VILLNAME;
+            if (!name) continue;
+
+            // Handle variants
             if (name === "双湖村") name = "雙湖村";
             if (name === "双潭村") name = "雙潭村";
 
             if (geometry.type === 'Polygon') {
                 if (isPointInPolygon(lat, lng, geometry.coordinates)) {
-                    console.log('[detectVillage] FOUND:', name);
+                    console.log('[detectVillage] MATCH FOUND:', name);
                     return name;
                 }
             } else if (geometry.type === 'MultiPolygon') {
                 for (const polygon of geometry.coordinates) {
                     if (isPointInPolygon(lat, lng, polygon)) {
-                        console.log('[detectVillage] FOUND:', name);
+                        console.log('[detectVillage] MATCH FOUND:', name);
                         return name;
                     }
                 }
             }
         }
-        console.log('[detectVillage] 範圍外');
+
+        console.log('[detectVillage] Point is OUTSIDE all village boundaries (範圍外)');
         return "範圍外";
     };
 
@@ -133,12 +142,12 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             const lng = Number(locationInfo.lng);
             if (!isNaN(lat) && !isNaN(lng)) {
                 const v = detectVillage(lat, lng);
-                // Only update if we didn't have a valid detection before, or if it changed
+                // v will be "村名" or "範圍外"
                 if (v && v !== detectedVillage) {
-                    console.log('[detectVillage] updating village detection:', v);
+                    console.log('[useEffect] Syncing detection result:', v);
                     setDetectedVillage(v);
-                    // Also update manual selection if it was empty or '範圍外'
-                    if (!manualVillage || manualVillage === "範圍外" || manualVillage === "") {
+                    // auto-select village if user hasn't explicitly chosen one yet or if it was "範圍外"
+                    if (!manualVillage || manualVillage === "" || manualVillage === "範圍外") {
                         setManualVillage(v);
                     }
                 }
@@ -225,6 +234,8 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         if (!file) return;
 
         setIsProcessingImage(true);
+        console.log(`[Photo] Processing ${mode} file:`, file.name, file.type, file.size);
+
         try {
             const base64 = await new Promise<string>((resolve) => {
                 const reader = new FileReader();
@@ -235,17 +246,29 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
             const arrayBuffer = await file.arrayBuffer();
             const coords = extractGPSSimplified(arrayBuffer);
+
             if (coords && !isNaN(coords.lat) && !isNaN(coords.lng)) {
+                console.log('[Photo] GPS coordinates found in EXIF:', coords);
                 setNewLightEdit({ lat: coords.lat.toFixed(5), lng: coords.lng.toFixed(5) });
                 const village = detectVillage(coords.lat, coords.lng);
                 setDetectedVillage(village);
                 if (village) setManualVillage(village);
                 alert("哇！成功從照片裡面找到座標囉 🎉");
             } else {
-                if (mode === 'file') alert("這張照片似乎沒有包含經緯度資訊唷！");
+                console.warn('[Photo] No GPS data found in image EXIF.');
+                if (mode === 'file') {
+                    alert("這張照片裡面似乎沒有經緯度資訊唷！😅\n(有些手機傳輸時會把隱私資訊刪掉)");
+                } else {
+                    // Camera mode usually relies on browser GPS which was triggered in the button click
+                    if (!locationInfo || isNaN(Number(locationInfo.lat))) {
+                        setToast({ message: "相機照片沒有座標，且瀏覽器還在定位中...請稍等一下再點一次拍照唷！", type: "error" });
+                        setTimeout(() => setToast(null), 3000);
+                    }
+                }
             }
         } catch (err) {
-            console.error("Image processing error:", err);
+            console.error("[Photo] Error processing image:", err);
+            alert("處理圖片時發生錯誤 🙈");
         } finally {
             setIsProcessingImage(false);
             e.target.value = '';
