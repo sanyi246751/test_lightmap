@@ -78,13 +78,13 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             if (name === "双潭村") name = "雙潭村";
 
             if (geometry.type === 'Polygon') {
-                if (isPointInPolygon(lat, lng, geometry.coordinates)) {
+                if (isPointInPolygon(lng, lat, geometry.coordinates)) {
                     console.log('[detectVillage] FOUND:', name);
                     return name;
                 }
             } else if (geometry.type === 'MultiPolygon') {
                 for (const polygon of geometry.coordinates) {
-                    if (isPointInPolygon(lat, lng, polygon)) {
+                    if (isPointInPolygon(lng, lat, polygon)) {
                         console.log('[detectVillage] FOUND:', name);
                         return name;
                     }
