@@ -69,9 +69,11 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     };
 
     const detectVillage = (lat: number, lng: number) => {
-        console.log('[detectVillage] called with:', lat, lng);
+        if (isNaN(lat) || isNaN(lng)) return null;
+        console.log('[detectVillage] called with:', lat, lng, '| villageData ready:', !!(villageData && villageData.features));
+
         if (!villageData || !villageData.features) {
-            console.warn('[detectVillage] villageData is missing!');
+            // If data not ready, we can wait. Returning null for now.
             return null;
         }
 
@@ -116,13 +118,33 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
     useEffect(() => {
         const v = manualVillage || detectedVillage;
-        if (v) {
+        if (v && v !== "範圍外") {
             const next = getNextId(v);
             setNewLightId(next);
         } else {
             setNewLightId('');
         }
     }, [manualVillage, detectedVillage, lights]);
+
+    // Auto-detect village when villageData arrives or location changes
+    useEffect(() => {
+        if (villageData && villageData.features && locationInfo) {
+            const lat = Number(locationInfo.lat);
+            const lng = Number(locationInfo.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const v = detectVillage(lat, lng);
+                // Only update if we didn't have a valid detection before, or if it changed
+                if (v && v !== detectedVillage) {
+                    console.log('[detectVillage] updating village detection:', v);
+                    setDetectedVillage(v);
+                    // Also update manual selection if it was empty or '範圍外'
+                    if (!manualVillage || manualVillage === "範圍外" || manualVillage === "") {
+                        setManualVillage(v);
+                    }
+                }
+            }
+        }
+    }, [villageData, locationInfo, detectedVillage, manualVillage]);
 
     useEffect(() => {
         fetchHistory();
@@ -152,6 +174,13 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
+                if (isNaN(latitude) || isNaN(longitude)) {
+                    console.error("[GPS] Received NaN coords:", latitude, longitude);
+                    alert("哎呀！GPS 傳回了奇怪的座標 (NaN)，請再試一次唷 🗺️");
+                    setLoading(false);
+                    return;
+                }
+
                 const now = new Date();
                 const dateStr = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
                 const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
@@ -507,16 +536,6 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                         <div className="bg-[#FFFDF9] rounded-[1.5rem] p-4 border-2 border-dashed border-slate-200 flex gap-3 items-center">
                                             <div className="flex-1 grid grid-cols-2 gap-3">
                                                 <div className="space-y-1.5">
-                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
-                                                    <input
-                                                        type="text"
-                                                        value={searchEdit.lng}
-                                                        onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
-                                                        className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
-                                                        placeholder="120.xxxxx"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
                                                     <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Lat)</label>
                                                     <input
                                                         type="text"
@@ -524,6 +543,16 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                         onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })}
                                                         className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
                                                         placeholder="24.xxxxx"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={searchEdit.lng}
+                                                        onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
+                                                        className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
+                                                        placeholder="120.xxxxx"
                                                     />
                                                 </div>
                                             </div>
@@ -638,22 +667,22 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
                                         <div className="flex gap-3">
                                             <div className="flex-1 space-y-1.5">
-                                                <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
-                                                    value={newLightEdit.lng}
-                                                    onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })}
-                                                    placeholder="必填唷"
-                                                />
-                                            </div>
-                                            <div className="flex-1 space-y-1.5">
                                                 <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Lat)</label>
                                                 <input
                                                     type="text"
                                                     className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
                                                     value={newLightEdit.lat}
                                                     onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })}
+                                                    placeholder="必填唷"
+                                                />
+                                            </div>
+                                            <div className="flex-1 space-y-1.5">
+                                                <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
+                                                    value={newLightEdit.lng}
+                                                    onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })}
                                                     placeholder="必填唷"
                                                 />
                                             </div>

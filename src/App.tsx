@@ -12,28 +12,33 @@ import { MapPin, Wrench, Settings } from 'lucide-react';
 export type UserRole = 'user' | 'maintenance' | 'admin' | null;
 
 export default function App() {
+  console.log("[App] Component initialized");
   const [role, setRole] = useState<UserRole>(null);
   const [currentPage, setCurrentPage] = useState<'map' | 'replace'>('map');
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [villageData, setVillageData] = useState<any>(null);
 
   useEffect(() => {
-    console.log("[App] fetching village data...");
-    fetch("data/Sanyi_villages.geojson")
+    const geojsonUrl = `${import.meta.env.BASE_URL}data/Sanyi_villages.geojson`.replace(/\/+/g, '/');
+    console.log("[App] fetching village data from:", geojsonUrl);
+    fetch(geojsonUrl)
       .then(res => {
-        console.log("[App] fetch status:", res.status, res.ok);
+        console.log("[App] fetch response status:", res.status, res.ok);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
       .then(data => {
-        console.log("[App] village data loaded successfully, features:", data?.features?.length);
-        setVillageData(data);
+        console.log("[App] village data loaded successfully. Features count:", data?.features?.length);
+        if (data && data.features) {
+          setVillageData(data);
+        } else {
+          console.warn("[App] Loaded data does not look like valid GeoJSON features collection.");
+        }
       })
       .catch(err => {
-        console.error("Error fetching village data in App:", err);
+        console.error("[App] Error fetching village data:", err);
       });
 
-    // 讀取網址參數，例如 ?role=maintenance
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get('role');
     if (roleParam === 'maintenance' || roleParam === 'admin' || roleParam === 'user') {
