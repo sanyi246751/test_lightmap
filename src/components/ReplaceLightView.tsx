@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, Save, Undo2, Trash2, Camera, ExternalLink, X, Check, Cloud, Image as ImageIcon, Smile, Sun, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, Save, Undo2, Trash2, Camera, ExternalLink, X, Check, Cloud, Image as ImageIcon, Smile, Sun, CheckCircle2, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StreetLightData } from '../types';
 import { GAS_WEB_APP_URL } from '../constants';
@@ -185,13 +185,14 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             });
             setSelectedImage(base64);
 
-            if (mode === 'file') {
-                const arrayBuffer = await file.arrayBuffer();
-                const coords = extractGPSSimplified(arrayBuffer);
-                if (coords) {
-                    setNewLightEdit({ lat: coords.lat.toFixed(5), lng: coords.lng.toFixed(5) });
-                    alert("哇！成功從照片裡面找到座標囉 🎉");
-                }
+            const arrayBuffer = await file.arrayBuffer();
+            const coords = extractGPSSimplified(arrayBuffer);
+            if (coords) {
+                setNewLightEdit({ lat: coords.lat.toFixed(5), lng: coords.lng.toFixed(5) });
+                const village = detectVillage(coords.lat, coords.lng);
+                setDetectedVillage(village);
+                if (village) setManualVillage(village);
+                alert("哇！成功從照片裡面找到座標囉 🎉");
             }
         } catch (err) {
             console.error("Image processing error:", err);
@@ -382,10 +383,23 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
                     <button
                         onClick={() => getDeviceLocation()}
-                        className="p-3 bg-white hover:bg-orange-50/50 text-slate-400 hover:text-[#FF8C69] rounded-2xl transition-all active:scale-95 shadow-sm border border-slate-100"
+                        className={`flex items-center gap-2 p-2 px-3 bg-white rounded-[1rem] transition-all active:scale-95 shadow-sm border-2 ${locationInfo
+                                ? 'border-green-200 text-green-600 bg-green-50/50'
+                                : 'border-red-200 text-red-500 bg-red-50/50'
+                            }`}
                         title="重新看看我在哪"
                     >
-                        <Crosshair className={`w-5 h-5 ${loading ? 'animate-spin text-[#FF8C69]' : ''}`} strokeWidth={2.5} />
+                        <Navigation className={`w-5 h-5 shrink-0 ${loading ? 'animate-pulse' : ''}`} strokeWidth={2.5} />
+                        <div className="flex flex-col text-left justify-center min-w-[60px]">
+                            {locationInfo ? (
+                                <>
+                                    <span className="text-[10px] font-extrabold leading-tight">{locationInfo.lat}, {locationInfo.lng}</span>
+                                    <span className="text-[9px] font-medium opacity-80 leading-none mt-0.5">{locationInfo.time}</span>
+                                </>
+                            ) : (
+                                <span className="text-[11px] font-extrabold whitespace-nowrap">尚未定位</span>
+                            )}
+                        </div>
                     </button>
                 </div>
 
@@ -413,21 +427,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
             <div className="flex-1 overflow-y-auto w-full scroll-smooth pt-4" style={{ scrollbarWidth: 'none' }}>
                 <div className="max-w-2xl mx-auto px-5 space-y-6 pb-28">
-                    {/* Location Badge */}
-                    <AnimatePresence>
-                        {locationInfo && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="flex items-center justify-center -mb-2"
-                            >
-                                <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold border border-green-200/50 shadow-sm flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                    找到您囉！目前定位中
-                                </span>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+
 
                     <AnimatePresence mode="wait">
                         {activeTab === 'edit' ? (
@@ -475,34 +475,35 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                             </button>
                                         </div>
 
-                                        <div className="bg-[#FFFDF9] rounded-[1.5rem] p-4 border-2 border-dashed border-slate-200">
-                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="bg-[#FFFDF9] rounded-[1.5rem] p-4 border-2 border-dashed border-slate-200 flex gap-3 items-center">
+                                            <div className="flex-1 grid grid-cols-2 gap-3">
                                                 <div className="space-y-1.5">
-                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Longitude)</label>
+                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
                                                     <input
                                                         type="text"
                                                         value={searchEdit.lng}
                                                         onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
-                                                        className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
-                                                        placeholder="例如: 120.xxxxx"
+                                                        className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
+                                                        placeholder="120.xxxxx"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Latitude)</label>
+                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Lat)</label>
                                                     <input
                                                         type="text"
                                                         value={searchEdit.lat}
                                                         onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })}
-                                                        className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
-                                                        placeholder="例如: 24.xxxxx"
+                                                        className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
+                                                        placeholder="24.xxxxx"
                                                     />
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))}
-                                                className="w-full py-3 bg-white border-2 border-slate-200 hover:border-orange-200 hover:text-[#FF8C69] hover:bg-orange-50/50 text-slate-500 rounded-2xl text-sm font-extrabold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+                                                className="flex flex-col items-center justify-center h-[72px] px-4 mt-[22px] bg-orange-50 hover:bg-[#FF8C69] hover:text-white text-[#FF8C69] rounded-2xl active:scale-95 transition-all text-sm font-bold shadow-sm"
                                             >
-                                                📍 幫我把目前座標填進去
+                                                <Navigation className="w-5 h-5 mb-1" strokeWidth={2.5} />
+                                                定位
                                             </button>
                                         </div>
 
@@ -537,7 +538,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                 <Smile className="w-6 h-6" strokeWidth={2.5} />
                                             </div>
                                             <div>
-                                                <h2 className="text-xl font-extrabold text-slate-800 tracking-wide">新增路燈檔</h2>
+                                                <h2 className="text-xl font-extrabold text-slate-800 tracking-wide">新增路燈編號</h2>
                                                 <p className="text-[13px] text-slate-400 font-medium">發現新的路燈！趕快來建檔吧～</p>
                                             </div>
                                         </div>
