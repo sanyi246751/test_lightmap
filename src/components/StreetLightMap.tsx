@@ -4,7 +4,7 @@ import L from 'leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { StreetLightData, StreetLightLocation, RepairRecord } from '../types';
 import { SHEET_URL, CHECK_SHEET_URL, DEFAULT_CENTER, DEFAULT_ZOOM, VILLAGE_GEOJSON_URL } from '../constants';
-import { Search, AlertTriangle, Lightbulb, ExternalLink, X, Navigation } from 'lucide-react';
+import { Search, AlertTriangle, Lightbulb, ExternalLink, X, Navigation, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Fix for Leaflet default icon issues in React
@@ -107,10 +107,12 @@ const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) 
 
 export default function StreetLightMap({
   onNavigateToReplace,
-  villageData
+  villageData,
+  role
 }: {
   onNavigateToReplace?: (data: StreetLightData[]) => void;
   villageData: any;
+  role?: 'user' | 'maintenance' | 'admin' | null;
 }) {
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,85 +262,89 @@ export default function StreetLightMap({
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
       </div>
 
-      {/* Unrepaired List Panel (Permanent) */}
-      <div className="absolute bottom-[3px] left-[3px] z-[1000] w-fit min-w-[160px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
-        <div className="pl-[10px] pr-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
-          <button
-            onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
-            className="w-[150px] text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
-          >
-            {unrepairedListOpen ? '收起' : '展開'}
-          </button>
-          <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
-            未查修清單 ({unrepairedLights.length})
-          </h3>
-        </div>
-
-        <AnimatePresence>
-          {unrepairedListOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="overflow-hidden flex flex-col max-h-[60vh]"
+      {/* Unrepaired List Panel (Permanent unless role is 'user') */}
+      {role !== 'user' && (
+        <div className="absolute bottom-[3px] left-[3px] z-[1000] w-fit min-w-[160px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
+          <div className="pl-[10px] pr-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
+            <button
+              onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
+              className="w-[150px] text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
             >
-              <div className="overflow-y-auto flex-1 pt-[5px] pl-[15px] pr-[5px] pb-[5px] border-t border-slate-100">
-                {unrepairedLights.length === 0 ? (
-                  <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {unrepairedLights.map(light => (
-                      <li key={light.id} className="group">
-                        <button
-                          onClick={() => {
-                            setTargetLocation([light.lat, light.lng]);
-                            setSearchedLightId(light.id);
-                          }}
-                          className="w-full py-1 pr-2 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-center gap-0"
-                        >
-                          <div className="flex flex-col items-start w-fit">
-                            <div className="flex justify-start items-center gap-1.5">
-                              <span className="font-bold text-[#0080ffe8] text-3xl">{light.id}</span>
-                              <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                                <Navigation className="w-4 h-4" />
+              {unrepairedListOpen ? '收起' : '展開'}
+            </button>
+            <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
+              未查修清單 ({unrepairedLights.length})
+            </h3>
+          </div>
+
+          <AnimatePresence>
+            {unrepairedListOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="overflow-hidden flex flex-col max-h-[60vh]"
+              >
+                <div className="overflow-y-auto flex-1 pt-[5px] pl-[15px] pr-[5px] pb-[5px] border-t border-slate-100">
+                  {unrepairedLights.length === 0 ? (
+                    <p className="text-center py-6 text-slate-400 text-sm italic">目前無未查修項目</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {unrepairedLights.map(light => (
+                        <li key={light.id} className="group">
+                          <button
+                            onClick={() => {
+                              setTargetLocation([light.lat, light.lng]);
+                              setSearchedLightId(light.id);
+                            }}
+                            className="w-full py-1 pr-2 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-center gap-0"
+                          >
+                            <div className="flex flex-col items-start w-fit">
+                              <div className="flex justify-start items-center gap-1.5">
+                                <span className="font-bold text-[#0080ffe8] text-3xl">{light.id}</span>
+                                <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                                  <Navigation className="w-4 h-4" />
+                                </div>
                               </div>
-                            </div>
-                            <div className="text-sm text-slate-600">
-                              {getReportDiffText(light.reportDate)}
-                            </div>
-                            {light.fault && (
-                              <div className="text-xs text-red-500 font-medium line-clamp-1">
-                                故障：{light.fault}
+                              <div className="text-sm text-slate-600">
+                                {getReportDiffText(light.reportDate)}
                               </div>
-                            )}
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                              {light.fault && (
+                                <div className="text-xs text-red-500 font-medium line-clamp-1">
+                                  故障：{light.fault}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Report Button & Copyright */}
       <div className="absolute bottom-[3px] right-[3px] z-[1000] flex flex-col items-center justify-center gap-1.5 bg-white/95 backdrop-blur-sm pt-[5px] px-[5px] pb-[3px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
-        <button
-          onClick={() => onNavigateToReplace?.(lights)}
-          className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-sm w-full"
-        >
-          <Navigation className="w-4 h-4 shrink-0" />
-          <span className="whitespace-nowrap">Replace</span>
-        </button>
+        {role === 'admin' && (
+          <button
+            onClick={() => onNavigateToReplace?.(lights)}
+            className="bg-[#0080ffe8] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm w-full leading-none"
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            <span className="whitespace-nowrap translate-y-[1px]">置換系統</span>
+          </button>
+        )}
         <button
           onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-          className="bg-[#0080ffe8] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm w-full"
+          className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-sm w-full leading-none"
         >
           <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
-          <span className="whitespace-nowrap">路燈通報系統</span>
+          <span className="whitespace-nowrap translate-y-[1px]">{role === 'maintenance' ? '維修系統登入' : '路燈通報系統'}</span>
         </button>
         <div className="text-[8px] text-slate-400 font-bold tracking-wide opacity-80 text-center w-full">
           02/26/2026 風行王者 <span className="text-[7px]">Design</span>
