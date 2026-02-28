@@ -34,7 +34,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit');
 
     // Detailed Geolocation Info
-    const [locationInfo, setLocationInfo] = useState<{ lat: string; lng: string; time: string } | null>(null);
+    const [locationInfo, setLocationInfo] = useState<{ lat: string; lng: string; date?: string; time: string } | null>(null);
     const [detectedVillage, setDetectedVillage] = useState<string | null>(null);
     const [manualVillage, setManualVillage] = useState<string>('');
 
@@ -137,11 +137,13 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             (position) => {
                 const { latitude, longitude } = position.coords;
                 const now = new Date();
-                const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                const dateStr = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
+                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
 
                 setLocationInfo({
                     lat: latitude.toFixed(5),
                     lng: longitude.toFixed(5),
+                    date: dateStr,
                     time: timeStr
                 });
 
@@ -187,12 +189,14 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
             const arrayBuffer = await file.arrayBuffer();
             const coords = extractGPSSimplified(arrayBuffer);
-            if (coords) {
+            if (coords && !isNaN(coords.lat) && !isNaN(coords.lng)) {
                 setNewLightEdit({ lat: coords.lat.toFixed(5), lng: coords.lng.toFixed(5) });
                 const village = detectVillage(coords.lat, coords.lng);
                 setDetectedVillage(village);
                 if (village) setManualVillage(village);
                 alert("哇！成功從照片裡面找到座標囉 🎉");
+            } else {
+                if (mode === 'file') alert("這張照片似乎沒有包含經緯度資訊唷！");
             }
         } catch (err) {
             console.error("Image processing error:", err);
@@ -255,6 +259,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             }
 
             if (lat !== undefined && lng !== undefined) {
+                if (isNaN(lat) || isNaN(lng)) return null;
                 return {
                     lat: latRef === 'S' ? -lat : lat,
                     lng: lngRef === 'W' ? -lng : lng
@@ -384,8 +389,8 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                     <button
                         onClick={() => getDeviceLocation()}
                         className={`flex items-center gap-2 p-2 px-3 bg-white rounded-[1rem] transition-all active:scale-95 shadow-sm border-2 ${locationInfo
-                                ? 'border-green-200 text-green-600 bg-green-50/50'
-                                : 'border-red-200 text-red-500 bg-red-50/50'
+                            ? 'border-green-200 text-green-600 bg-green-50/50'
+                            : 'border-red-200 text-red-500 bg-red-50/50'
                             }`}
                         title="重新看看我在哪"
                     >
@@ -393,11 +398,11 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                         <div className="flex flex-col text-left justify-center min-w-[60px]">
                             {locationInfo ? (
                                 <>
-                                    <span className="text-[10px] font-extrabold leading-tight">{locationInfo.lat}, {locationInfo.lng}</span>
-                                    <span className="text-[9px] font-medium opacity-80 leading-none mt-0.5">{locationInfo.time}</span>
+                                    <span className="text-[11px] font-extrabold leading-tight">定位完成</span>
+                                    <span className="text-[9px] font-medium opacity-80 leading-none mt-0.5">{locationInfo.date} {locationInfo.time}</span>
                                 </>
                             ) : (
-                                <span className="text-[11px] font-extrabold whitespace-nowrap">尚未定位</span>
+                                <span className="text-[11px] font-extrabold whitespace-nowrap">未定位</span>
                             )}
                         </div>
                     </button>
@@ -478,16 +483,6 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                         <div className="bg-[#FFFDF9] rounded-[1.5rem] p-4 border-2 border-dashed border-slate-200 flex gap-3 items-center">
                                             <div className="flex-1 grid grid-cols-2 gap-3">
                                                 <div className="space-y-1.5">
-                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
-                                                    <input
-                                                        type="text"
-                                                        value={searchEdit.lng}
-                                                        onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
-                                                        className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
-                                                        placeholder="120.xxxxx"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
                                                     <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Lat)</label>
                                                     <input
                                                         type="text"
@@ -495,6 +490,16 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                         onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })}
                                                         className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
                                                         placeholder="24.xxxxx"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={searchEdit.lng}
+                                                        onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })}
+                                                        className="w-full px-3 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all shadow-sm"
+                                                        placeholder="120.xxxxx"
                                                     />
                                                 </div>
                                             </div>
@@ -609,22 +614,22 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
                                         <div className="flex gap-3">
                                             <div className="flex-1 space-y-1.5">
-                                                <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
-                                                    value={newLightEdit.lng}
-                                                    onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })}
-                                                    placeholder="必填唷"
-                                                />
-                                            </div>
-                                            <div className="flex-1 space-y-1.5">
                                                 <label className="text-xs font-extrabold text-slate-400 ml-2">緯度 (Lat)</label>
                                                 <input
                                                     type="text"
                                                     className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
                                                     value={newLightEdit.lat}
                                                     onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })}
+                                                    placeholder="必填唷"
+                                                />
+                                            </div>
+                                            <div className="flex-1 space-y-1.5">
+                                                <label className="text-xs font-extrabold text-slate-400 ml-2">經度 (Lng)</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-4 py-3 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-200"
+                                                    value={newLightEdit.lng}
+                                                    onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })}
                                                     placeholder="必填唷"
                                                 />
                                             </div>
@@ -867,9 +872,16 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                         📍 被分配到：<span className="text-slate-700">{manualVillage || detectedVillage}</span>
                                     </div>
                                 )}
-                                <div className="text-[13px] font-mono font-bold text-slate-500 bg-white p-3 rounded-2xl border-2 border-slate-100 relative z-10 shadow-sm leading-relaxed">
-                                    <div className="flex justify-between"><span>Lat:</span> <span className="text-slate-700">{showConfirm.lat}</span></div>
-                                    <div className="flex justify-between"><span>Lng:</span> <span className="text-slate-700">{showConfirm.lng}</span></div>
+                                <div className="text-[13px] font-mono font-bold text-slate-500 bg-white p-3 rounded-2xl border-2 border-slate-100 relative z-10 shadow-sm flex items-center justify-around">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="opacity-70">Lat:</span>
+                                        <span className="text-slate-700">{showConfirm.lat}</span>
+                                    </div>
+                                    <div className="w-px h-4 bg-slate-200"></div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="opacity-70">Lng:</span>
+                                        <span className="text-slate-700">{showConfirm.lng}</span>
+                                    </div>
                                 </div>
                             </div>
 
