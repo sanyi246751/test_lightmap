@@ -68,6 +68,8 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     };
 
     const detectVillage = (lat: number, lng: number) => {
+        console.log('[detectVillage] called with:', lat, lng);
+        console.log('[detectVillage] villageData:', !!villageData, villageData?.features?.length);
         if (!villageData || !villageData.features) return null;
         for (const feature of villageData.features) {
             const geometry = feature.geometry;
@@ -76,13 +78,20 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             if (name === "双潭村") name = "雙潭村";
 
             if (geometry.type === 'Polygon') {
-                if (isPointInPolygon(lat, lng, geometry.coordinates)) return name;
+                if (isPointInPolygon(lat, lng, geometry.coordinates)) {
+                    console.log('[detectVillage] FOUND:', name);
+                    return name;
+                }
             } else if (geometry.type === 'MultiPolygon') {
                 for (const polygon of geometry.coordinates) {
-                    if (isPointInPolygon(lat, lng, polygon)) return name;
+                    if (isPointInPolygon(lat, lng, polygon)) {
+                        console.log('[detectVillage] FOUND:', name);
+                        return name;
+                    }
                 }
             }
         }
+        console.log('[detectVillage] 範圍外');
         return "範圍外";
     };
 
@@ -152,6 +161,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
                 setLoading(false);
                 const village = detectVillage(latitude, longitude);
+                console.log('[GPS] village detected:', village, '| manualVillage will be set to:', village);
                 setDetectedVillage(village);
                 if (village) setManualVillage(village);
 
