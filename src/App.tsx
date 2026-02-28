@@ -8,6 +8,7 @@ import StreetLightMap from './components/StreetLightMap';
 import ReplaceLightView from './components/ReplaceLightView';
 import { StreetLightData } from './types';
 import { MapPin, Wrench, Settings } from 'lucide-react';
+import sanyiVillageData from '../data/Sanyi_villages.geojson';
 
 export type UserRole = 'user' | 'maintenance' | 'admin' | null;
 
@@ -15,15 +16,9 @@ export default function App() {
   const [role, setRole] = useState<UserRole>(null);
   const [currentPage, setCurrentPage] = useState<'map' | 'replace'>('map');
   const [lights, setLights] = useState<StreetLightData[]>([]);
-  const [villageData, setVillageData] = useState<any>(null);
+  const villageData = sanyiVillageData;
 
   useEffect(() => {
-    import('./constants').then(({ VILLAGE_GEOJSON_URL }) => {
-      fetch(VILLAGE_GEOJSON_URL)
-        .then(res => res.json())
-        .then(data => setVillageData(data))
-        .catch(err => console.error("Error fetching village data in App:", err));
-    });
 
     // 讀取網址參數，例如 ?role=maintenance
     const params = new URLSearchParams(window.location.search);
