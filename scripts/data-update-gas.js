@@ -288,7 +288,13 @@ function testConnection() {
     var ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
     Logger.log("試算表連接成功: " + ss.getName());
 
-    // 2. 觸發雲端硬碟權限
+    // 2. 觸發雲端硬碟「寫入」權限 (重要：創立一個暫存檔並立即刪除)
     var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
-    Logger.log("雲端硬碟資料夾連接成功: " + folder.getName());
+    Logger.log("雲端硬碟資料夾讀取成功: " + folder.getName());
+
+    var tempFile = folder.createFile("測試權限", "這是測試授權的暫存檔，稍後會自動刪除", MimeType.PLAIN_TEXT);
+    Logger.log("雲端硬碟檔案「建立」權限測試成功！");
+
+    tempFile.setTrashed(true);
+    Logger.log("雲端硬碟檔案「刪除」權限測試成功！授權已全數完成。");
 }

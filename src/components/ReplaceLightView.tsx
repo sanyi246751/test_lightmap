@@ -24,7 +24,8 @@ const VILLAGE_CODES: Record<string, string> = {
     "勝興村": "04",
     "西湖村": "05",
     "龍騰村": "06",
-    "鯉魚潭村": "07"
+    "鯉魚潭村": "07",
+    "範圍外": "99"
 };
 
 export default function ReplaceLightView({ lights, villageData, onBack }: ReplaceLightViewProps) {
@@ -78,7 +79,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 }
             }
         }
-        return null;
+        return "範圍外";
     };
 
     const getNextId = (vName: string) => {
@@ -423,25 +424,34 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                         <motion.div key="edit" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-6">
 
                             {/* ID Search Section */}
-                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
-                                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2 px-1"><Search className="w-4 h-4 text-emerald-500" /> 搜尋路燈編號</h2>
-                                <div className="flex gap-2">
-                                    <input type="text" placeholder="輸入編號..." className="flex-1 px-4 py-3 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20" value={searchId} onChange={(e) => setSearchId(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchId()} />
-                                    <button onClick={handleSearchId} className="bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors">搜尋</button>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+                                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                    <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
+                                        <Search className="w-4 h-4" />
+                                    </div>
+                                    修改現有路燈編號
+                                </h2>
+                                <div className="flex gap-2 relative">
+                                    <div className="relative flex-1">
+                                        <input type="text" placeholder="輸入搜尋編號..." className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all font-bold text-slate-700 placeholder:font-normal" value={searchId} onChange={(e) => setSearchId(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchId()} />
+                                        {searchId && <button onClick={() => setSearchId('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>}
+                                    </div>
+                                    <button onClick={handleSearchId} className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white px-5 rounded-xl text-sm font-bold shadow-sm shadow-emerald-500/20 active:scale-95 transition-all">搜尋</button>
                                 </div>
 
-                                <div className="space-y-2.5 pt-1">
+                                <div className="space-y-3 pt-2">
                                     <div className="flex items-center gap-2">
-                                        <div className="grid grid-cols-2 gap-2 flex-1">
-                                            <input type="text" value={searchEdit.lat} onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
-                                            <input type="text" value={searchEdit.lng} onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
+                                        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex divide-x divide-slate-200">
+                                            <input type="text" value={searchEdit.lat} onChange={e => setSearchEdit({ ...searchEdit, lat: e.target.value })} className="w-full px-3 py-2.5 bg-transparent text-xs font-mono outline-none focus:bg-indigo-50/50 transition-colors" placeholder="緯度 Latitude" />
+                                            <input type="text" value={searchEdit.lng} onChange={e => setSearchEdit({ ...searchEdit, lng: e.target.value })} className="w-full px-3 py-2.5 bg-transparent text-xs font-mono outline-none focus:bg-indigo-50/50 transition-colors" placeholder="經度 Longitude" />
                                         </div>
-                                        <button onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
+                                        <button onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))} className="p-2.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors flex-shrink-0" title="帶入我的位置">
                                             <Crosshair className="w-4 h-4" />
                                         </button>
                                     </div>
                                     {foundLight && (
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 pt-2">
                                             <button onClick={() => setShowConfirm({ type: 'search', id: foundLight.id, lat: searchEdit.lat, lng: searchEdit.lng })} className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-sm">存檔更新</button>
                                             <button
                                                 onClick={() => {
@@ -460,87 +470,111 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                             </div>
 
                             {/* New Light Section */}
-                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
-                                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2 px-1"><CheckCircle className="w-4 h-4 text-amber-500" /> 新增路燈編號</h2>
-                                <div className="space-y-3">
-                                    <input type="text" placeholder="編號(空白則自動產生)" className="w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm outline-none" value={newLightId} onChange={(e) => setNewLightId(e.target.value)} />
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-5 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
+                                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                    <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                                        <CheckCircle className="w-4 h-4" />
+                                    </div>
+                                    新增路燈位置
+                                </h2>
 
-                                    <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 space-y-1.5">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="font-bold text-amber-800">偵測村里：</span>
-                                            <span className={`font - bold ${detectedVillage ? 'text-indigo-600' : 'text-slate-400'} `}>
-                                                {detectedVillage || "待定位中..."}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        onClick={() => {
+                                            getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }));
+                                        }}
+                                        className="flex flex-col items-center justify-center gap-1.5 p-3 bg-indigo-50/80 border border-indigo-100/50 text-indigo-600 rounded-2xl hover:bg-indigo-100 hover:border-indigo-200 transition-all active:scale-95"
+                                    >
+                                        <MapPin className="w-5 h-5 flex-shrink-0" />
+                                        <span className="text-xs font-bold w-full text-center">純定位</span>
+                                    </button>
+
+                                    <input
+                                        type="file"
+                                        id="photo-upload"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleFileChange(e, 'file')}
+                                    />
+                                    <button
+                                        onClick={() => document.getElementById('photo-upload')?.click()}
+                                        disabled={isProcessingImage}
+                                        className="flex flex-col items-center justify-center gap-1.5 p-3 bg-emerald-50/80 border border-emerald-100/50 text-emerald-600 rounded-2xl hover:bg-emerald-100 hover:border-emerald-200 transition-all active:scale-95 disabled:opacity-50"
+                                    >
+                                        <ImageIcon className="w-5 h-5 flex-shrink-0" />
+                                        <span className="text-xs font-bold w-full text-center">{isProcessingImage ? '解析中' : '傳照片'}</span>
+                                    </button>
+
+                                    <input
+                                        type="file"
+                                        id="camera-capture"
+                                        accept="image/*"
+                                        capture="environment"
+                                        className="hidden"
+                                        onChange={(e) => handleFileChange(e, 'camera')}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }));
+                                            document.getElementById('camera-capture')?.click();
+                                        }}
+                                        className="flex flex-col items-center justify-center gap-1.5 p-3 bg-sky-50/80 border border-sky-100/50 text-sky-600 rounded-2xl hover:bg-sky-100 hover:border-sky-200 transition-all active:scale-95"
+                                    >
+                                        <Camera className="w-5 h-5 flex-shrink-0" />
+                                        <span className="text-xs font-bold w-full text-center">拍照</span>
+                                    </button>
+                                </div>
+
+                                <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <label className="text-xs font-bold text-slate-500">路燈編號與村里</label>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${detectedVillage ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
+                                                {detectedVillage ? `偵測位置: ${detectedVillage}` : "GPS 尚未定位"}
                                             </span>
                                         </div>
-
-                                        <select
-                                            value={manualVillage || detectedVillage || ''}
-                                            onChange={(e) => setManualVillage(e.target.value)}
-                                            className="w-full bg-white border border-amber-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none"
-                                        >
-                                            <option value="" disabled>-- 手動選擇村里 --</option>
-                                            {Object.keys(VILLAGE_CODES).map(v => <option key={v} value={v}>{v}</option>)}
-                                        </select>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="grid grid-cols-2 gap-2 flex-1">
-                                            <input type="text" value={newLightEdit.lat} onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="緯度" />
-                                            <input type="text" value={newLightEdit.lng} onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })} className="px-3 py-2.5 bg-slate-50 border rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500/20" placeholder="經度" />
+                                        <div className="flex bg-white border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/50 transition-all">
+                                            <select
+                                                value={manualVillage || detectedVillage || ''}
+                                                onChange={(e) => setManualVillage(e.target.value)}
+                                                className="bg-slate-50/50 border-r border-slate-200 px-2 py-2.5 text-xs font-bold text-slate-700 outline-none max-w-[105px]"
+                                            >
+                                                <option value="" disabled>--村里--</option>
+                                                {Object.keys(VILLAGE_CODES).map(v => <option key={v} value={v}>{v}</option>)}
+                                            </select>
+                                            <input type="text" placeholder="編號(空白自動產生)" className="w-full px-3 py-2.5 text-sm font-bold text-slate-700 outline-none placeholder:font-normal" value={newLightId} onChange={(e) => setNewLightId(e.target.value)} />
                                         </div>
-                                        <button onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors" title="帶入定位">
-                                            <Crosshair className="w-4 h-4" />
-                                        </button>
                                     </div>
 
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="file"
-                                            id="photo-upload"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => handleFileChange(e, 'file')}
-                                        />
-                                        <button
-                                            onClick={() => document.getElementById('photo-upload')?.click()}
-                                            disabled={isProcessingImage}
-                                            className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-colors"
-                                        >
-                                            <ImageIcon className="w-4 h-4" /> {isProcessingImage ? '解析中...' : '照片上傳 (含定位)'}
-                                        </button>
-
-                                        <input
-                                            type="file"
-                                            id="camera-capture"
-                                            accept="image/*"
-                                            capture="environment"
-                                            className="hidden"
-                                            onChange={(e) => handleFileChange(e, 'camera')}
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }));
-                                                document.getElementById('camera-capture')?.click();
-                                            }}
-                                            className="flex-1 flex items-center justify-center gap-2 bg-sky-50 text-sky-600 py-2.5 rounded-xl font-bold text-xs hover:bg-sky-100 transition-colors"
-                                        >
-                                            <Camera className="w-4 h-4" /> 手機相機 (即時定位)
-                                        </button>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 px-1">座標資訊</label>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-white border border-slate-200 rounded-xl overflow-hidden flex divide-x divide-slate-200">
+                                                <input type="text" value={newLightEdit.lat} onChange={e => setNewLightEdit({ ...newLightEdit, lat: e.target.value })} className="w-full px-3 py-2.5 bg-transparent text-xs font-mono outline-none focus:bg-indigo-50/50 transition-colors" placeholder="緯度 Latitude" />
+                                                <input type="text" value={newLightEdit.lng} onChange={e => setNewLightEdit({ ...newLightEdit, lng: e.target.value })} className="w-full px-3 py-2.5 bg-transparent text-xs font-mono outline-none focus:bg-indigo-50/50 transition-colors" placeholder="經度 Longitude" />
+                                            </div>
+                                            <button onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))} className="p-2.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors flex-shrink-0" title="重新帶入定位">
+                                                <Crosshair className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {selectedImage && (
-                                        <div className="relative mt-2 rounded-xl overflow-hidden border border-slate-200">
-                                            <img src={selectedImage} alt="Preview" className="w-full h-32 object-cover" />
-                                            <button onClick={() => setSelectedImage(null)} className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full text-[10px]">移除照片</button>
+                                        <div className="relative mt-2 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                                            <img src={selectedImage} alt="Preview" className="w-full h-40 object-cover" />
+                                            <button onClick={() => setSelectedImage(null)} className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-black/80 transition-colors">移除照片</button>
                                         </div>
                                     )}
-
-                                    <button onClick={() => {
-                                        const finalVillage = manualVillage || detectedVillage;
-                                        if (!newLightEdit.lat || !finalVillage) { alert("請先定位、拍照或選擇村里"); return; }
-                                        setShowConfirm({ type: 'new', id: newLightId || '自動產生中...', lat: newLightEdit.lat, lng: newLightEdit.lng });
-                                    }} className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-sm shadow-sm hover:bg-slate-900 transition-colors">確認新增路燈</button>
                                 </div>
+
+                                <button onClick={() => {
+                                    const finalVillage = manualVillage || detectedVillage;
+                                    if (!newLightEdit.lat || !finalVillage) { alert("請先定位、拍照或選擇村里"); return; }
+                                    setShowConfirm({ type: 'new', id: newLightId || '自動產生中...', lat: newLightEdit.lat, lng: newLightEdit.lng });
+                                }} className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold text-sm shadow-md shadow-slate-800/20 hover:bg-slate-900 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                                    確認新增路燈 <ArrowRight className="w-4 h-4" />
+                                </button>
                             </div>
                         </motion.div>
                     ) : (
