@@ -12,10 +12,12 @@
 /* Base styles for RepairReportView only to avoid global pollution */
 .repair-report-container {
     font-family: -apple-system, "Noto Sans TC", sans-serif;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     color: #1e293b;
-    background: transparent;
+    background: #f8fafc;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .nav-bar-report {
