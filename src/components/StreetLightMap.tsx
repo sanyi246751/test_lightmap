@@ -4,7 +4,7 @@ import L from 'leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { StreetLightData, StreetLightLocation, RepairRecord } from '../types';
 import { SHEET_URL, CHECK_SHEET_URL, DEFAULT_CENTER, DEFAULT_ZOOM, VILLAGE_GEOJSON_URL } from '../constants';
-import { Search, AlertTriangle, Lightbulb, ExternalLink, X, Navigation, Settings, MapPin } from 'lucide-react';
+import { Search, AlertTriangle, Lightbulb, ExternalLink, X, Navigation, Settings, MapPin, ClipboardCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Fix for Leaflet default icon issues in React
@@ -107,10 +107,12 @@ const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) 
 
 export default function StreetLightMap({
   onNavigateToReplace,
+  onNavigateToReport,
   villageData,
   role
 }: {
   onNavigateToReplace?: (data: StreetLightData[]) => void;
+  onNavigateToReport?: () => void;
   villageData: any;
   role?: 'officer' | 'maintenance' | 'admin' | null;
 }) {
@@ -330,25 +332,45 @@ export default function StreetLightMap({
         </div>
       )}
 
-      {/* Bottom Right Actions (Hidden for maintenance) */}
-      {role !== 'maintenance' && (
+      {/* Bottom Right Actions */}
+      {(role !== 'maintenance' || role === 'maintenance') && (
         <div className="absolute bottom-[3px] right-[3px] z-[1000] flex flex-col items-center justify-center gap-1.5 bg-white/95 backdrop-blur-sm pt-[5px] px-[5px] pb-[3px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
-          {role === 'admin' && (
+          {role === 'maintenance' && (
             <button
-              onClick={() => onNavigateToReplace?.(lights)}
-              className="bg-[#0080ffe8] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm w-full leading-none"
+              onClick={() => onNavigateToReport?.()}
+              className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-sm w-full leading-none"
             >
-              <Settings className="w-4 h-4 shrink-0" />
-              <span className="whitespace-nowrap translate-y-[1px]">置換系統</span>
+              <ClipboardCheck className="w-4 h-4 shrink-0" />
+              <span className="whitespace-nowrap translate-y-[1px]">路燈維修回報系統</span>
             </button>
           )}
-          <button
-            onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
-            className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-sm w-full leading-none"
-          >
-            <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
-            <span className="whitespace-nowrap translate-y-[1px]">路燈通報系統</span>
-          </button>
+          {role === 'admin' && (
+            <>
+              <button
+                onClick={() => onNavigateToReplace?.(lights)}
+                className="bg-[#0080ffe8] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#0066cc] transition-all shadow-sm w-full leading-none"
+              >
+                <Settings className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap translate-y-[1px]">置換系統</span>
+              </button>
+              <button
+                onClick={() => onNavigateToReport?.()}
+                className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-sm w-full leading-none"
+              >
+                <ClipboardCheck className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap translate-y-[1px]">維修回報系統</span>
+              </button>
+            </>
+          )}
+          {role !== 'maintenance' && (
+            <button
+              onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
+              className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-sm w-full leading-none"
+            >
+              <Lightbulb className="w-4 h-4 shrink-0 fill-yellow-400 text-yellow-300" />
+              <span className="whitespace-nowrap translate-y-[1px]">路燈通報系統</span>
+            </button>
+          )}
           <div className="text-[8px] text-slate-400 font-bold tracking-wide opacity-80 text-center w-full">
             02/26/2026 風行王者 <span className="text-[7px]">Design</span>
           </div>

@@ -6,8 +6,9 @@
 import React, { useState, useEffect } from 'react';
 import StreetLightMap from './components/StreetLightMap';
 import ReplaceLightView from './components/ReplaceLightView';
+import RepairReportView from './components/RepairReportView';
 import { StreetLightData } from './types';
-import { MapPin, Wrench, Settings } from 'lucide-react';
+import { MapPin, Wrench, Settings, ClipboardCheck } from 'lucide-react';
 
 export type UserRole = 'officer' | 'maintenance' | 'admin' | null;
 
@@ -15,7 +16,7 @@ export default function App() {
   console.log("[App] Component initialized");
   const [role, setRole] = useState<UserRole>(null);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-  const [currentPage, setCurrentPage] = useState<'map' | 'replace'>('map');
+  const [currentPage, setCurrentPage] = useState<'map' | 'replace' | 'report'>('map');
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [villageData, setVillageData] = useState<any>(null);
 
@@ -118,7 +119,7 @@ export default function App() {
             <div className="p-3 bg-emerald-100 text-emerald-500 rounded-2xl"><Wrench className="w-8 h-8" /></div>
             <div className="text-left flex-1">
               <div className="text-xl font-bold">維修人員</div>
-              <div className="text-sm text-slate-400 font-medium">查看待修清單、路燈編號查詢系統</div>
+              <div className="text-sm text-slate-400 font-medium">查看待修清單、路燈編號查詢系統、維修回報系統</div>
             </div>
           </button>
 
@@ -150,11 +151,16 @@ export default function App() {
               setCurrentPage('replace');
             }
           }}
+          onNavigateToReport={() => setCurrentPage('report')}
         />
-      ) : (
+      ) : currentPage === 'replace' ? (
         <ReplaceLightView
           lights={lights}
           villageData={villageData}
+          onBack={() => setCurrentPage('map')}
+        />
+      ) : (
+        <RepairReportView
           onBack={() => setCurrentPage('map')}
         />
       )}
