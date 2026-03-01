@@ -366,6 +366,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             id,
             lat,
             lng,
+            access_token: localStorage.getItem('sanyi_admin_auth'),
             beforeLat: options?.beforeLat || currentLight?.lat.toString() || "",
             beforeLng: options?.beforeLng || currentLight?.lng.toString() || "",
             villageCode: options?.villageCode,
@@ -423,7 +424,11 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'batchDelete', items })
+                body: JSON.stringify({
+                    action: 'batchDelete',
+                    items,
+                    access_token: localStorage.getItem('sanyi_admin_auth')
+                })
             });
             setToast({ message: "咻～紀錄已經被清乾淨了 ✨", type: 'success' });
             setTimeout(() => setToast(null), 3000);

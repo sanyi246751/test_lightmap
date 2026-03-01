@@ -14,9 +14,12 @@ export type UserRole = 'officer' | 'maintenance' | 'admin' | null;
 export default function App() {
   console.log("[App] Component initialized");
   const [role, setRole] = useState<UserRole>(null);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState<'map' | 'replace'>('map');
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [villageData, setVillageData] = useState<any>(null);
+
+  const ADMIN_PASSWORD = "888"; // 預設進階管理密碼
 
   useEffect(() => {
     // 確保路徑處理正確，BASE_URL 通常包含 /test_lightmap/
@@ -51,13 +54,36 @@ export default function App() {
 
     const params = new URLSearchParams(window.location.search);
     const roleParam = params.get('role');
-    if (roleParam === 'maintenance' || roleParam === 'admin' || roleParam === 'officer') {
+
+    if (roleParam === 'admin') {
+      const savedAuth = localStorage.getItem('sanyi_admin_auth');
+      if (savedAuth === ADMIN_PASSWORD) {
+        setIsAdminAuthenticated(true);
+        setRole('admin');
+      } else {
+        // 如果網址是 admin 但沒登入過，則對外顯示 null (回首頁)
+        setRole(null);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('role');
+        window.history.replaceState({}, '', url);
+      }
+    } else if (roleParam === 'maintenance' || roleParam === 'officer') {
       setRole(roleParam as UserRole);
     }
   }, []);
 
   // 處理身分選擇並更新網址
   const handleRoleSelect = (selectedRole: UserRole) => {
+    if (selectedRole === 'admin') {
+      const password = prompt("請輸入管理單位專屬密碼：");
+      if (password !== ADMIN_PASSWORD) {
+        alert("密碼錯誤，拒絕存取管理系統！");
+        return;
+      }
+      setIsAdminAuthenticated(true);
+      localStorage.setItem('sanyi_admin_auth', ADMIN_PASSWORD);
+    }
+
     setRole(selectedRole);
     if (selectedRole) {
       const url = new URL(window.location.href);
