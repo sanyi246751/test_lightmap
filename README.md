@@ -42,6 +42,31 @@ npm run dev
 ```env
 VITE_ADMIN_PASSWORD=你的密碼
 ```
+⚠️ 您現在必須執行的步驟（非常重要）：
+這一步是為了讓 GitHub 知道密碼是多少，但又不顯示出來：
+
+打開您的 GitHub 倉庫網頁。
+點擊上方的 「Settings」 (設定)。
+在左側選單中找到 「Secrets and variables」 ➔ 「Actions」。
+點擊右側的 「New repository secret」。
+Name 欄位輸入：VITE_ADMIN_PASSWORD。
+Secret 欄位輸入：XXXXXX (您的密碼)。
+點擊 「Add secret」。
+這樣做的好處：
+程式碼更乾淨：GitHub 上的檔案只會顯示 import.meta.env.VITE_ADMIN_PASSWORD，沒人知道實際密碼。
+私密性極高：只有您（倉庫所有人）能設定這個 Secret，且一旦設定後連您自己都只能「更換」而不能再看到內容，路人完全無法得知。
+自動化編譯：下次您上傳 (Push) 程式碼時，GitHub 會自動在背景完成編譯並把這個密碼塞進去。
+最後別忘了，您的 Google Apps Script 內的 ADMIN_SECRET 也要記得改成 XXXXXX 喔！
+
+####手動觸發（如果您剛改完 Secret 密碼）
+如果您沒有改程式碼，只是改了 GitHub 後台的 Secrets 密碼，您可以手動叫它重新跑一次部署，讓新密碼生效：
+
+打開您的 GitHub 專案網頁。
+點擊上方的 「Actions」 分頁。
+在左側清單中點擊 「Build and Deploy」 (這是我幫您取的名字)。
+您會看到右邊有一行淺藍色的字：「Run workflow」(下拉選單)。
+點擊綠色的 「Run workflow」 按鈕。
+GitHub 就會立刻開始執行部署任務。
 
 ### 3. GAS 後端設定
 - 腳本位置：`scripts/data-update-gas.js`
