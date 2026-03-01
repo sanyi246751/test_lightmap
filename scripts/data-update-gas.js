@@ -60,7 +60,7 @@ function doPost(e) {
         var payload = JSON.parse(e.postData.contents);
 
         // --- 進階防護：後端金鑰驗證 ---
-        var ADMIN_SECRET = "888"; // 務必與前端 ADMIN_PASSWORD 一致
+        var ADMIN_SECRET = "chi0720"; // 務必與前端 ADMIN_PASSWORD 一致
         if (payload.access_token !== ADMIN_SECRET) {
             return ContentService.createTextOutput("Error: 設備未授權！").setMimeType(ContentService.MimeType.TEXT);
         }
