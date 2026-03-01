@@ -246,6 +246,10 @@
     z-index: 9999;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .report-upload-box-ui {
     background: #fff;
     width: 280px;
