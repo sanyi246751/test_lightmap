@@ -19,7 +19,7 @@ export default function App() {
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [villageData, setVillageData] = useState<any>(null);
 
-  const ADMIN_PASSWORD = "888"; // 預設進階管理密碼
+  const ADMIN_PASSWORD = "chi0720"; // 預設進階管理密碼
 
   useEffect(() => {
     // 確保路徑處理正確，BASE_URL 通常包含 /test_lightmap/
