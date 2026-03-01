@@ -47,6 +47,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const [searchEdit, setSearchEdit] = useState({ lat: '', lng: '' });
     const [newLightId, setNewLightId] = useState('');
     const [newLightEdit, setNewLightEdit] = useState({ lat: '', lng: '' });
+    const [isSearching, setIsSearching] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isProcessingImage, setIsProcessingImage] = useState(false);
     const [selectedHistory, setSelectedHistory] = useState<Set<number>>(new Set());
@@ -126,14 +127,13 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     };
 
     useEffect(() => {
-        const v = manualVillage || detectedVillage;
-        if (v && v !== "範圍外") {
-            const next = getNextId(v);
+        if (manualVillage) {
+            const next = getNextId(manualVillage);
             setNewLightId(next);
         } else {
             setNewLightId('');
         }
-    }, [manualVillage, detectedVillage, lights]);
+    }, [manualVillage, lights]);
 
     // Auto-detect village when villageData arrives or location changes
     useEffect(() => {
@@ -146,10 +146,6 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 if (v && v !== detectedVillage) {
                     console.log('[useEffect] Syncing detection result:', v);
                     setDetectedVillage(v);
-                    // auto-select village if user hasn't explicitly chosen one yet or if it was "範圍外"
-                    if (!manualVillage || manualVillage === "" || manualVillage === "範圍外") {
-                        setManualVillage(v);
-                    }
                 }
             }
         }
@@ -157,7 +153,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
     useEffect(() => {
         fetchHistory();
-        getDeviceLocation();
+        getDeviceLocation({ updateDraft: false });
     }, []);
 
     const fetchHistory = async () => {
@@ -173,7 +169,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         }
     };
 
-    const getDeviceLocation = (callback?: (lat: number, lng: number) => void) => {
+    const getDeviceLocation = (options?: { updateDraft?: boolean, callback?: (lat: number, lng: number) => void }) => {
         setLoading(true);
         if (!navigator.geolocation) {
             alert("哎呀！瀏覽器似乎不支援定位唷 😅");
@@ -201,13 +197,18 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                     time: timeStr
                 });
 
-                setLoading(false);
                 const village = detectVillage(latitude, longitude);
-                console.log('[GPS] village detected:', village, '| manualVillage will be set to:', village);
+                console.log('[GPS] village detected:', village);
                 setDetectedVillage(village);
-                if (village) setManualVillage(village);
 
-                if (callback) callback(latitude, longitude);
+                if (options?.updateDraft) {
+                    console.log('[GPS] Updating draft fields with:', village);
+                    if (village) setManualVillage(village);
+                    setNewLightEdit({ lat: latitude.toFixed(5), lng: longitude.toFixed(5) });
+                }
+
+                if (options?.callback) options.callback(latitude, longitude);
+                setLoading(false);
             },
             (error) => {
                 console.error("Geolocation error:", error);
@@ -218,8 +219,14 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         );
     };
 
-    const handleSearchId = () => {
+    const handleSearchId = async () => {
+        if (!searchId.trim()) return;
+        setIsSearching(true);
+        // Simulate a tiny delay for better UX flow
+        await new Promise(r => setTimeout(r, 600));
+
         const light = lights.find(l => l.id === searchId.trim());
+        setIsSearching(false);
         if (light) {
             setFoundLight(light);
             setSearchEdit({ lat: formatCoord(light.lat), lng: formatCoord(light.lng) });
@@ -463,7 +470,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                     </h1>
 
                     <button
-                        onClick={() => getDeviceLocation()}
+                        onClick={() => getDeviceLocation({ updateDraft: false })}
                         className={`flex items-center gap-2 p-2 px-3 bg-white rounded-[1rem] transition-all active:scale-95 shadow-sm border-2 ${locationInfo
                             ? 'border-green-200 text-green-600 bg-green-50/50'
                             : 'border-red-200 text-red-500 bg-red-50/50'
@@ -580,7 +587,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                 </div>
                                             </div>
                                             <button
-                                                onClick={() => getDeviceLocation((lt, lg) => setSearchEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))}
+                                                onClick={() => getDeviceLocation({ callback: (lt, lg) => setSearchEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }) })}
                                                 className="flex flex-col items-center justify-center h-[72px] px-4 mt-[22px] bg-orange-50 hover:bg-[#FF8C69] hover:text-white text-[#FF8C69] rounded-2xl active:scale-95 transition-all text-sm font-bold shadow-sm"
                                             >
                                                 <Navigation className="w-5 h-5 mb-1" strokeWidth={2.5} />
@@ -628,7 +635,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                     {/* Action Chips */}
                                     <div className="grid grid-cols-3 gap-3 mb-6">
                                         <button
-                                            onClick={() => getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }))}
+                                            onClick={() => getDeviceLocation({ updateDraft: true })}
                                             className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-[#FF8C69] hover:text-white text-[#FF8C69] rounded-2xl active:scale-95 transition-all text-sm font-bold shadow-sm"
                                         >
                                             <MapPin className="w-7 h-7" strokeWidth={2.5} />
@@ -648,7 +655,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                         <input type="file" id="camera-capture" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileChange(e, 'camera')} />
                                         <button
                                             onClick={() => {
-                                                getDeviceLocation((lt, lg) => setNewLightEdit({ lat: lt.toFixed(5), lng: lg.toFixed(5) }));
+                                                getDeviceLocation({ updateDraft: true });
                                                 document.getElementById('camera-capture')?.click();
                                             }}
                                             className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-[#A88AE6] hover:text-white text-[#A88AE6] rounded-2xl active:scale-95 transition-all text-sm font-bold shadow-sm"
@@ -664,7 +671,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                 <label className="text-xs font-extrabold text-slate-400 ml-2">村里</label>
                                                 <div className="relative">
                                                     <select
-                                                        value={manualVillage || detectedVillage || ''}
+                                                        value={manualVillage || ''}
                                                         onChange={(e) => setManualVillage(e.target.value)}
                                                         className="w-full pl-4 pr-10 py-3.5 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none appearance-none shadow-sm transition-all"
                                                     >
@@ -885,9 +892,8 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 )}
             </AnimatePresence>
 
-            {/* Overlay / Loading Cute Character */}
             <AnimatePresence>
-                {isSaving && !showConfirm && (
+                {(isSaving || isSearching) && !showConfirm && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -901,7 +907,9 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                     <Cloud className="w-6 h-6 text-[#FF8C69] animate-bounce" fill="#FF8C69" fillOpacity="0.2" />
                                 </div>
                             </div>
-                            <p className="text-[17px] font-extrabold text-slate-700">正在努力幫您存檔囉... 🏃‍♂️</p>
+                            <p className="text-[17px] font-extrabold text-slate-700">
+                                {isSaving ? "正在努力幫您存檔囉... 🏃‍♂️" : "正在尋找路燈資料中... 🔍"}
+                            </p>
                         </div>
                     </motion.div>
                 )}
