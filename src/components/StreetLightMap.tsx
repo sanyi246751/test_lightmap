@@ -189,7 +189,9 @@ export default function StreetLightMap({
   }, []);
 
   const unrepairedLights = useMemo(() =>
-    lights.filter(l => l.isUnrepaired),
+    lights
+      .filter(l => l.isUnrepaired)
+      .sort((a, b) => (b.reportDate?.getTime() || 0) - (a.reportDate?.getTime() || 0)),
     [lights]);
 
   const repairedLights = useMemo(() =>
@@ -302,11 +304,11 @@ export default function StreetLightMap({
                               setTargetLocation([light.lat, light.lng]);
                               setSearchedLightId(light.id);
                             }}
-                            className="w-full py-1 pr-2 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-center gap-0"
+                            className="w-full py-2 px-3 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-start gap-1"
                           >
-                            <div className="flex flex-col items-start w-fit">
+                            <div className="flex flex-col items-start w-full">
                               <div className="flex justify-start items-center gap-1.5">
-                                <span className="font-bold text-[#0080ffe8] text-3xl">{light.id}</span>
+                                <span className="font-bold text-[#0080ffe8] text-2xl">{light.id}</span>
                                 <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                                   <Navigation className="w-4 h-4" />
                                 </div>
@@ -315,7 +317,7 @@ export default function StreetLightMap({
                                 {getReportDiffText(light.reportDate)}
                               </div>
                               {light.fault && (
-                                <div className="text-xs text-red-500 font-medium line-clamp-1">
+                                <div className="text-xs text-red-500 font-medium text-left break-words">
                                   故障：{light.fault}
                                 </div>
                               )}
