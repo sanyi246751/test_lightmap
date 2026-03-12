@@ -220,11 +220,11 @@ export default function StreetLightMap({
       .sort((a, b) => {
         const timeA = a.reportDate?.getTime() || 0;
         const timeB = b.reportDate?.getTime() || 0;
-        // 報修時間愈早(值愈小)的排在愈後面 -> [最新] 到 [最舊]
+        // 報修時間由最舊(小)排到最新(大) -> [最舊] 到 [最新]
         // 若日期無效則放到最後
         if (timeA === 0) return 1;
         if (timeB === 0) return -1;
-        return timeB - timeA;
+        return timeA - timeB;
       }),
     [lights]);
 
