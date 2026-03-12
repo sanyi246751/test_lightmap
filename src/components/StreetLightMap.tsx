@@ -47,14 +47,40 @@ const goldIcon = new L.Icon({
 
 function parseTaiwanDateTime(twStr: string) {
   if (!twStr) return null;
-  const parts = twStr.trim().split(' ');
-  if (parts.length < 3) return null;
-  const [datePart, ampm, timePart] = parts;
-  const [year, month, day] = datePart.split('/').map(Number);
-  let [hour, minute, second] = timePart.split(':').map(Number);
+  const cleaned = twStr.trim().replace(/\s+/g, ' ');
+
+  // Standard format: "2024/3/12 下午 2:30:00" or "2024/3/12 14:30:00"
+  let match = cleaned.match(/^(\d+\/\d+\/\d+)\s*(上午|下午)?\s*(\d+:\d+(?::\d+)?)/);
+
+  if (!match) {
+    // Try format without spaces: "2024/3/12下午2:30:00"
+    match = cleaned.match(/^(\d+\/\d+\/\d+)(上午|下午)(\d+:\d+(?::\d+)?)/);
+  }
+
+  if (!match) return null;
+
+  const datePart = match[1];
+  const ampm = match[2];
+  const timePart = match[3];
+
+  const dateParts = datePart.split('/').map(Number);
+  let year = dateParts[0];
+  const month = dateParts[1];
+  const day = dateParts[2];
+
+  // Handle Minguo year if necessary (unlikely in modern sheets but safe)
+  if (year < 1911 && year > 0) year += 1911;
+
+  const timeParts = timePart.split(':').map(Number);
+  let hour = timeParts[0];
+  const minute = timeParts[1];
+  const second = timeParts[2] || 0;
+
   if (ampm === '下午' && hour < 12) hour += 12;
   if (ampm === '上午' && hour === 12) hour = 0;
-  return new Date(year, month - 1, day, hour, minute, second);
+
+  const d = new Date(year, month - 1, day, hour, minute, second);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 // Component to handle map actions like flying to a location or fitting bounds
@@ -191,7 +217,15 @@ export default function StreetLightMap({
   const unrepairedLights = useMemo(() =>
     lights
       .filter(l => l.isUnrepaired)
-      .sort((a, b) => (b.reportDate?.getTime() || 0) - (a.reportDate?.getTime() || 0)),
+      .sort((a, b) => {
+        const timeA = a.reportDate?.getTime() || 0;
+        const timeB = b.reportDate?.getTime() || 0;
+        // 依「等待天數」大到小排序 (即：報修時間 由小到大)
+        // 若日期無效則放到最後
+        if (timeA === 0) return 1;
+        if (timeB === 0) return -1;
+        return timeA - timeB;
+      }),
     [lights]);
 
   const repairedLights = useMemo(() =>
@@ -270,13 +304,13 @@ export default function StreetLightMap({
 
       {/* Unrepaired List Panel (Visible for all roles) */}
       {role !== null && (
-        <div className="absolute bottom-[3px] left-[3px] z-[1000] w-[180px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
-          <div className="pl-[10px] pr-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
+        <div className="absolute bottom-[3px] left-[3px] z-[1000] w-[160px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
+          <div className="pl-[5px] pr-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
             <button
               onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
-              className="w-[150px] text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold transition-colors"
+              className="w-[130px] text-center text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-[14px] font-bold transition-colors"
             >
-              {unrepairedListOpen ? '收起' : '展開'}
+              {unrepairedListOpen ? '隱藏' : '顯示'}
             </button>
             <h3 className="font-bold text-slate-800 flex items-center gap-1.5 text-base whitespace-nowrap">
               未查修清單 ({unrepairedLights.length})
@@ -304,7 +338,7 @@ export default function StreetLightMap({
                               setTargetLocation([light.lat, light.lng]);
                               setSearchedLightId(light.id);
                             }}
-                            className="w-full py-2 px-3 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-start gap-1"
+                            className="w-full py-0.5 px-3 rounded-2xl hover:bg-indigo-50 active:bg-slate-200 transition-colors flex flex-col items-start gap-1"
                           >
                             <div className="flex flex-col items-start w-full">
                               <div className="flex justify-start items-center gap-1.5">
@@ -313,12 +347,12 @@ export default function StreetLightMap({
                                   <Navigation className="w-4 h-4" />
                                 </div>
                               </div>
-                              <div className="text-[16px] text-slate-600">
+                              <div className="text-[13px] text-slate-600">
                                 {getReportDiffText(light.reportDate)}
                               </div>
                               {light.fault && (
-                                <div className="text-[12px] text-red-500 font-medium text-left break-words">
-                                  故障：{light.fault}
+                                <div className="text-[12px] text-red-500 font-medium flex gap-1 mt-0.5">
+                                  <span className="text-left break-words">{light.fault}</span>
                                 </div>
                               )}
                             </div>
