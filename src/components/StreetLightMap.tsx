@@ -308,16 +308,16 @@ export default function StreetLightMap({
                           >
                             <div className="flex flex-col items-start w-full">
                               <div className="flex justify-start items-center gap-1.5">
-                                <span className="font-bold text-[#0080ffe8] text-xl">{light.id}</span>
+                                <span className="font-bold text-[#0080ffe8] text-[24px]">{light.id}</span>
                                 <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                                   <Navigation className="w-4 h-4" />
                                 </div>
                               </div>
-                              <div className="text-xs text-slate-600">
+                              <div className="text-[16px] text-slate-600">
                                 {getReportDiffText(light.reportDate)}
                               </div>
                               {light.fault && (
-                                <div className="text-[11px] text-red-500 font-medium text-left break-words">
+                                <div className="text-[12px] text-red-500 font-medium text-left break-words">
                                   故障：{light.fault}
                                 </div>
                               )}
