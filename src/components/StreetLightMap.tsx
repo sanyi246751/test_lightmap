@@ -270,7 +270,7 @@ export default function StreetLightMap({
 
       {/* Unrepaired List Panel (Visible for all roles) */}
       {role !== null && (
-        <div className="absolute bottom-[3px] left-[3px] z-[1000] w-[220px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
+        <div className="absolute bottom-[3px] left-[3px] z-[1000] w-[180px] max-h-[60vh] bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl border border-slate-200 overflow-hidden flex flex-col scale-90 origin-bottom-left">
           <div className="pl-[10px] pr-[5px] py-[5px] border-b border-slate-100 bg-slate-50/50 flex flex-col items-center gap-1">
             <button
               onClick={() => setUnrepairedListOpen(!unrepairedListOpen)}
