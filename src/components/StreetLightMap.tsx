@@ -308,16 +308,16 @@ export default function StreetLightMap({
                           >
                             <div className="flex flex-col items-start w-full">
                               <div className="flex justify-start items-center gap-1.5">
-                                <span className="font-bold text-[#0080ffe8] text-2xl">{light.id}</span>
+                                <span className="font-bold text-[#0080ffe8] text-xl">{light.id}</span>
                                 <div className="bg-indigo-100 text-indigo-500 p-1 rounded-xl group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                                   <Navigation className="w-4 h-4" />
                                 </div>
                               </div>
-                              <div className="text-sm text-slate-600">
+                              <div className="text-xs text-slate-600">
                                 {getReportDiffText(light.reportDate)}
                               </div>
                               {light.fault && (
-                                <div className="text-xs text-red-500 font-medium text-left break-words">
+                                <div className="text-[11px] text-red-500 font-medium text-left break-words">
                                   故障：{light.fault}
                                 </div>
                               )}
@@ -343,7 +343,7 @@ export default function StreetLightMap({
               className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-sm w-full leading-none"
             >
               <ClipboardCheck className="w-4 h-4 shrink-0" />
-              <span className="whitespace-nowrap translate-y-[1px]">路燈維修回報系統</span>
+              <span className="whitespace-nowrap translate-y-[1px]">維修回報系統</span>
             </button>
           )}
           {role === 'admin' && (
