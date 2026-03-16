@@ -23,6 +23,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const [postPhoto, setPostPhoto] = useState<string | null>(null);
     
     const [isUploading, setIsUploading] = useState(false);
+    const [isLocating, setIsLocating] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadText, setUploadText] = useState("0.0%");
     const [uploadTitle, setUploadTitle] = useState("📤 正在處理資料");
@@ -75,6 +76,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const findClosestLight = (lat: number, lng: number) => {
         if (!lightsDict || lightsDict.length === 0) {
             console.warn("lightsDict empty, cannot match GPS");
+            setIsLocating(false);
             return;
         }
         let minLightId = "";
@@ -93,14 +95,17 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         if (minLightId) {
             setGpsLightId(minLightId);
         }
+        setIsLocating(false);
     };
 
     const handleManualGPS = () => {
         if ("geolocation" in navigator) {
+            setIsLocating(true);
             navigator.geolocation.getCurrentPosition((pos) => {
                 findClosestLight(pos.coords.latitude, pos.coords.longitude);
                 alert("已成功更新GPS並尋找最近路燈！");
             }, (err) => {
+                setIsLocating(false);
                 alert("無法取得位置，請確認是否允許網頁存取 GPS。");
             }, { enableHighAccuracy: true });
         } else {
@@ -128,8 +133,11 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             if (type === 'pre') setPrePhoto(dataUrl);
             if (type === 'post') setPostPhoto(dataUrl);
 
-            // 直接讀取 File object 的 EXIF (比 Image src 穩定)
+            setIsLocating(true);
+
+            // 直接讀取 File object 的 EXIF
             (EXIF as any).getData(file as any, function (this: any) {
+                // 1. 嘗試抓取日期
                 const exifDate = EXIF.getTag(this, "DateTimeOriginal");
                 if (exifDate) {
                     const parts = exifDate.split(" ")[0].split(":");
@@ -138,25 +146,35 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                     }
                 }
 
+                // 2. 嘗試抓取 GPS
                 const latArray = EXIF.getTag(this, "GPSLatitude");
                 const latRef = EXIF.getTag(this, "GPSLatitudeRef");
                 const lngArray = EXIF.getTag(this, "GPSLongitude");
                 const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+
                 if (latArray && latRef && lngArray && lngRef) {
                     const lat = convertDMSToDD(latArray, latRef);
                     const lng = convertDMSToDD(lngArray, lngRef);
                     if (lat !== null && lng !== null) {
                         findClosestLight(lat, lng);
+                        return; // 成功從照片讀取，直接結束
                     }
-                } else {
-                    // 若照片無GPS (如瀏覽器直接拍照被剝離)，退回使用瀏覽器定位
-                    if ("geolocation" in navigator) {
-                        navigator.geolocation.getCurrentPosition((pos) => {
+                }
+
+                // 3. 若照片無 GPS (常見於手機瀏覽器直接拍照)，退回使用瀏覽器定位
+                if ("geolocation" in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
                             findClosestLight(pos.coords.latitude, pos.coords.longitude);
-                        }, () => {
-                            console.warn("Fallback GPS failed");
-                        }, { enableHighAccuracy: true });
-                    }
+                        },
+                        (err) => {
+                            console.warn("Fallback GPS failed:", err);
+                            setIsLocating(false);
+                        },
+                        { enableHighAccuracy: true, timeout: 5000 }
+                    );
+                } else {
+                    setIsLocating(false);
                 }
             });
         };
@@ -258,10 +276,10 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                         <input
                             type="text"
                             className="report-input-field"
-                            placeholder="將從照片中自動抓取最相近路燈"
+                            placeholder={isLocating ? "⏳ 正在抓取位置..." : "將從照片中自動抓取最相近路燈"}
                             value={gpsLightId}
                             onChange={(e) => setGpsLightId(e.target.value)}
-                            style={{ margin: 0 }}
+                            style={{ margin: 0, border: isLocating ? '2px solid #a855f7' : undefined }}
                         />
                         <button 
                             className="bg-purple-100 text-purple-600 px-3 rounded-lg font-bold text-sm whitespace-nowrap flex-shrink-0 active:bg-purple-200"
