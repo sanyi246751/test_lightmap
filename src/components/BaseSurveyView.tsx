@@ -80,30 +80,34 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     };
 
     const findClosestLight = (lat: number, lng: number) => {
-        setGpsLat(lat);
-        setGpsLng(lng);
-        if (!lightsDict || lightsDict.length === 0) {
-            console.warn("lightsDict empty, cannot match GPS");
-            setIsLocating(false);
-            return;
-        }
-        let minLightId = "";
-        let minD = Infinity;
-        for (let l of lightsDict) {
-            let lLat = parseFloat(l["緯度Latitude"]);
-            let lLng = parseFloat(l["經度Longitude"]);
-            if (!isNaN(lLat) && !isNaN(lLng)) {
-                let d = getDistance(lat, lng, lLat, lLng);
-                if (d < minD) {
-                    minD = d;
-                    minLightId = l["原路燈號碼"]?.trim() || "";
+        try {
+            setGpsLat(lat);
+            setGpsLng(lng);
+            if (!lightsDict || lightsDict.length === 0) {
+                console.warn("lightsDict empty, cannot match GPS");
+                return;
+            }
+            let minLightId = "";
+            let minD = Infinity;
+            for (let l of lightsDict) {
+                let lLat = parseFloat(l["緯度Latitude"]);
+                let lLng = parseFloat(l["經度Longitude"]);
+                if (!isNaN(lLat) && !isNaN(lLng)) {
+                    let d = getDistance(lat, lng, lLat, lLng);
+                    if (d < minD) {
+                        minD = d;
+                        minLightId = l["原路燈號碼"]?.trim() || "";
+                    }
                 }
             }
+            if (minLightId) {
+                setGpsLightId(minLightId);
+            }
+        } catch (err) {
+            console.error("Error in findClosestLight:", err);
+        } finally {
+            setIsLocating(false);
         }
-        if (minLightId) {
-            setGpsLightId(minLightId);
-        }
-        setIsLocating(false);
     };
 
     const handleManualGPS = () => {
@@ -111,11 +115,11 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             setIsLocating(true);
             navigator.geolocation.getCurrentPosition((pos) => {
                 findClosestLight(pos.coords.latitude, pos.coords.longitude);
-                alert("已成功更新GPS並尋找最近路燈！");
+                setTimeout(() => alert("已成功更新GPS並尋找最近路燈！"), 100);
             }, (err) => {
                 setIsLocating(false);
-                alert("無法取得位置，請確認是否允許網頁存取 GPS。");
-            }, { enableHighAccuracy: true });
+                setTimeout(() => alert("無法取得位置，請確認是否允許網頁存取 GPS。"), 100);
+            }, { enableHighAccuracy: true, timeout: 5000 });
         } else {
             alert("您的瀏覽器不支援定位功能。");
         }
@@ -145,67 +149,74 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             // 只有「照片1」(pre) 或「路燈編號」(id) 才進行 GPS 定對與路燈匹配
             if (type === 'pre' || type === 'id') {
                 setIsLocating(true);
-            
-            // 安全機制：若 10 秒後還在讀取，強制停止轉圈
-            const safetyTimeout = setTimeout(() => setIsLocating(false), 10000);
+                
+                // 安全機制：若 10 秒後還在讀取，強制停止轉圈
+                const safetyTimeout = setTimeout(() => setIsLocating(false), 10000);
 
-            // 直接讀取 File object 的 EXIF
-            try {
-                (EXIF as any).getData(file as any, function (this: any) {
-                    clearTimeout(safetyTimeout);
-                    // 1. 嘗試抓取日期與時間
-                    const exifDate = EXIF.getTag(this, "DateTimeOriginal");
-                    if (exifDate) {
-                        const parts = exifDate.split(" ");
-                        if (parts.length === 2) {
-                            const d = parts[0].split(":");
-                            const t = parts[1].split(":");
-                            if (d.length === 3 && t.length === 3) {
-                                setRDate(`${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`);
+                try {
+                    // 直接讀取 File object 的 EXIF
+                    (EXIF as any).getData(file as any, function (this: any) {
+                        try {
+                            clearTimeout(safetyTimeout);
+                            // 1. 嘗試抓取日期與時間
+                            const exifDate = EXIF.getTag(this, "DateTimeOriginal");
+                            if (exifDate) {
+                                const parts = exifDate.split(" ");
+                                if (parts.length === 2) {
+                                    const d = parts[0].split(":");
+                                    const t = parts[1].split(":");
+                                    if (d.length === 3 && t.length === 3) {
+                                        setRDate(`${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`);
+                                    }
+                                }
                             }
-                        }
-                    }
 
-                    // 2. 嘗試抓取 GPS
-                    const latArray = EXIF.getTag(this, "GPSLatitude");
-                    const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-                    const lngArray = EXIF.getTag(this, "GPSLongitude");
-                    const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+                            // 2. 嘗試抓取 GPS
+                            const latArray = EXIF.getTag(this, "GPSLatitude");
+                            const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                            const lngArray = EXIF.getTag(this, "GPSLongitude");
+                            const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
 
-                    let exifLat: number | null = null;
-                    let exifLng: number | null = null;
+                            let exifLat: number | null = null;
+                            let exifLng: number | null = null;
 
-                    if (latArray && latRef && lngArray && lngRef) {
-                        exifLat = convertDMSToDD(latArray, latRef);
-                        exifLng = convertDMSToDD(lngArray, lngRef);
-                    }
+                            if (latArray && latRef && lngArray && lngRef) {
+                                exifLat = convertDMSToDD(latArray, latRef);
+                                exifLng = convertDMSToDD(lngArray, lngRef);
+                            }
 
-                    if (exifLat !== null && exifLng !== null) {
-                        findClosestLight(exifLat, exifLng);
-                        return; // 成功從照片讀取，結束
-                    }
+                            if (exifLat !== null && exifLng !== null) {
+                                findClosestLight(exifLat, exifLng);
+                                return; // 成功從照片讀取，結束
+                            }
 
-                    // 3. 若照片無 GPS 或經緯度解析失敗，退回使用瀏覽器定位
-                    if ("geolocation" in navigator) {
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                                findClosestLight(pos.coords.latitude, pos.coords.longitude);
-                            },
-                            (err) => {
-                                console.warn("Fallback GPS failed:", err);
+                            // 3. 若照片無 GPS 或經緯度解析失敗，退回使用瀏覽器定位
+                            if ("geolocation" in navigator) {
+                                navigator.geolocation.getCurrentPosition(
+                                    (pos) => {
+                                        findClosestLight(pos.coords.latitude, pos.coords.longitude);
+                                    },
+                                    (err) => {
+                                        console.warn("Fallback GPS failed:", err);
+                                        setIsLocating(false);
+                                    },
+                                    { enableHighAccuracy: true, timeout: 5000 }
+                                );
+                            } else {
                                 setIsLocating(false);
-                            },
-                            { enableHighAccuracy: true, timeout: 5000 }
-                        );
-                    } else {
-                        setIsLocating(false);
-                        console.warn("Geolocation not supported");
-                    }
-                });
-            } catch (err) {
-                console.error("EXIF parsing error:", err);
-                setIsLocating(false);
-            }
+                                console.warn("Geolocation not supported");
+                            }
+                        } catch (err) {
+                            console.error("Inner EXIF parsing error:", err);
+                            clearTimeout(safetyTimeout);
+                            setIsLocating(false);
+                        }
+                    });
+                } catch (err) {
+                    console.error("Outer EXIF parsing error:", err);
+                    clearTimeout(safetyTimeout);
+                    setIsLocating(false);
+                }
             }
             // 「照片2」(post) 僅作為圖片存檔，不讀取任何 EXIF (GPS 或時間)
         };
