@@ -48,7 +48,11 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         if (inputId.includes('pre')) {
             preFetchLocation();
         }
-        document.getElementById(inputId)?.click();
+        const el = document.getElementById(inputId);
+        if (el) {
+            el.removeAttribute("capture"); // 移除強制拍照屬性，讓它回歸選相簿功能
+            el.click();
+        }
     };
 
     const handleCam = (inputId: string) => {
