@@ -73,7 +73,10 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     };
 
     const findClosestLight = (lat: number, lng: number) => {
-        if (!lightsDict || lightsDict.length === 0) return;
+        if (!lightsDict || lightsDict.length === 0) {
+            console.warn("lightsDict empty, cannot match GPS");
+            return;
+        }
         let minLightId = "";
         let minD = Infinity;
         for (let l of lightsDict) {
@@ -89,6 +92,19 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         }
         if (minLightId) {
             setGpsLightId(minLightId);
+        }
+    };
+
+    const handleManualGPS = () => {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                findClosestLight(pos.coords.latitude, pos.coords.longitude);
+                alert("已成功更新GPS並尋找最近路燈！");
+            }, (err) => {
+                alert("無法取得位置，請確認是否允許網頁存取 GPS。");
+            }, { enableHighAccuracy: true });
+        } else {
+            alert("您的瀏覽器不支援定位功能。");
         }
     };
 
@@ -112,31 +128,37 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             if (type === 'pre') setPrePhoto(dataUrl);
             if (type === 'post') setPostPhoto(dataUrl);
 
-            const img = new Image();
-            img.src = dataUrl;
-            img.onload = () => {
-                (EXIF as any).getData(img as any, function (this: any) {
-                    const exifDate = EXIF.getTag(this, "DateTimeOriginal");
-                    if (exifDate) {
-                        const parts = exifDate.split(" ")[0].split(":");
-                        if (parts.length === 3) {
-                            setRDate(`${parts[0]}-${parts[1]}-${parts[2]}`);
-                        }
+            // 直接讀取 File object 的 EXIF (比 Image src 穩定)
+            (EXIF as any).getData(file as any, function (this: any) {
+                const exifDate = EXIF.getTag(this, "DateTimeOriginal");
+                if (exifDate) {
+                    const parts = exifDate.split(" ")[0].split(":");
+                    if (parts.length === 3) {
+                        setRDate(`${parts[0]}-${parts[1]}-${parts[2]}`);
                     }
+                }
 
-                    const latArray = EXIF.getTag(this, "GPSLatitude");
-                    const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-                    const lngArray = EXIF.getTag(this, "GPSLongitude");
-                    const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
-                    if (latArray && latRef && lngArray && lngRef) {
-                        const lat = convertDMSToDD(latArray, latRef);
-                        const lng = convertDMSToDD(lngArray, lngRef);
-                        if (lat !== null && lng !== null) {
-                            findClosestLight(lat, lng);
-                        }
+                const latArray = EXIF.getTag(this, "GPSLatitude");
+                const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                const lngArray = EXIF.getTag(this, "GPSLongitude");
+                const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+                if (latArray && latRef && lngArray && lngRef) {
+                    const lat = convertDMSToDD(latArray, latRef);
+                    const lng = convertDMSToDD(lngArray, lngRef);
+                    if (lat !== null && lng !== null) {
+                        findClosestLight(lat, lng);
                     }
-                });
-            };
+                } else {
+                    // 若照片無GPS (如瀏覽器直接拍照被剝離)，退回使用瀏覽器定位
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition((pos) => {
+                            findClosestLight(pos.coords.latitude, pos.coords.longitude);
+                        }, () => {
+                            console.warn("Fallback GPS failed");
+                        }, { enableHighAccuracy: true });
+                    }
+                }
+            });
         };
         reader.readAsDataURL(file);
     };
@@ -232,13 +254,24 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             <div className={`report-content ${isUploading ? 'report-lock' : ''}`} id="page">
                 <div className="report-card">
                     <label className="report-label">GPS抓取路燈號碼</label>
-                    <input
-                        type="text"
-                        className="report-input-field"
-                        placeholder="將從照片中自動抓取最相近路燈"
-                        value={gpsLightId}
-                        onChange={(e) => setGpsLightId(e.target.value)}
-                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                            type="text"
+                            className="report-input-field"
+                            placeholder="將從照片中自動抓取最相近路燈"
+                            value={gpsLightId}
+                            onChange={(e) => setGpsLightId(e.target.value)}
+                            style={{ margin: 0 }}
+                        />
+                        <button 
+                            className="bg-purple-100 text-purple-600 px-3 rounded-lg font-bold text-sm whitespace-nowrap flex-shrink-0 active:bg-purple-200"
+                            onClick={handleManualGPS}
+                            style={{ margin: 0 }}
+                            title="若照片無 GPS 或抓取不到，可點擊此按鈕抓取現在位置"
+                        >
+                            📍重新定位
+                        </button>
+                    </div>
                     <label className="report-label" style={{ marginTop: '1rem' }}>調查時間</label>
                     <input
                         type="date"
