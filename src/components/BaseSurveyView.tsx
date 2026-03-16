@@ -16,6 +16,8 @@ interface BaseSurveyViewProps {
 export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const [rDate, setRDate] = useState("");
     const [gpsLightId, setGpsLightId] = useState<string>("");
+    const [gpsLat, setGpsLat] = useState<number | null>(null);
+    const [gpsLng, setGpsLng] = useState<number | null>(null);
 
     const [lightsDict, setLightsDict] = useState<StreetLightLocation[]>([]);
 
@@ -74,6 +76,8 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     };
 
     const findClosestLight = (lat: number, lng: number) => {
+        setGpsLat(lat);
+        setGpsLng(lng);
         if (!lightsDict || lightsDict.length === 0) {
             console.warn("lightsDict empty, cannot match GPS");
             setIsLocating(false);
@@ -237,6 +241,8 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                 body: JSON.stringify({
                     dateStr: rDate,
                     lightId: gpsLightId,
+                    lat: gpsLat,
+                    lng: gpsLng,
                     photo1: a,
                     photo2: b
                 })
@@ -272,6 +278,11 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             <div className={`report-content ${isUploading ? 'report-lock' : ''}`} id="page">
                 <div className="report-card">
                     <label className="report-label">GPS抓取路燈號碼</label>
+                    {gpsLat && gpsLng && (
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px' }}>
+                            📍 經緯度: {gpsLat.toFixed(6)}, {gpsLng.toFixed(6)}
+                        </div>
+                    )}
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <input
                             type="text"

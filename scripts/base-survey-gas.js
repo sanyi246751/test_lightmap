@@ -23,8 +23,8 @@ function doPost(e) {
         
         if (!sheet) {
             sheet = ss.insertSheet(SHEET_NAME);
-            sheet.appendRow(["調查時間", "GPS抓取路燈號碼", "照片1", "照片2"]);
-            sheet.getRange("A1:D1").setFontWeight("bold");
+            sheet.appendRow(["調查時間", "GPS抓取路燈號碼", "緯度", "經度", "照片1", "照片2"]);
+            sheet.getRange("A1:F1").setFontWeight("bold");
         }
 
         var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
@@ -33,24 +33,30 @@ function doPost(e) {
         
         var dateStr = p.dateStr || "";
         var lightId = p.lightId || "未知";
+        var lat = p.lat || "";
+        var lng = p.lng || "";
         
         // 寫入基本資料
-        var newRow = [dateStr, lightId, "", ""];
+        var newRow = [dateStr, lightId, lat, lng, "", ""];
         sheet.appendRow(newRow);
         var lastRow = sheet.getLastRow();
 
-        // 強制設定格式為文字，避免路燈號碼被科學符號化
-        sheet.getRange(lastRow, 1, 1, 2).setNumberFormat("@");
+        // 強制設定格式為文字，避免路燈號碼被科學符號化，經緯度保持精確
+        sheet.getRange(lastRow, 1, 1, 4).setNumberFormat("@");
         sheet.getRange(lastRow, 1).setValue(dateStr);
         sheet.getRange(lastRow, 2).setValue(lightId);
+        sheet.getRange(lastRow, 3).setValue(lat);
+        sheet.getRange(lastRow, 4).setValue(lng);
 
-        console.log("已新增列 " + lastRow + "，準備處理照片");
+        console.log("已新增列 " + lastRow + "，座標: " + lat + "," + lng + "，準備處理照片");
 
         if (p.photo1 && p.photo1.length > 50) {
-            saveFile(p.photo1, folder, sheet, lastRow, 3, timeStamp + "_基座調查_" + lightId + "_1.jpg");
+            var url1 = saveImageToDrive(p.photo1, lightId + "_基座1_" + Date.now());
+            sheet.getRange(lastRow, 5).setValue(url1);
         }
         if (p.photo2 && p.photo2.length > 50) {
-            saveFile(p.photo2, folder, sheet, lastRow, 4, timeStamp + "_基座調查_" + lightId + "_2.jpg");
+            var url2 = saveImageToDrive(p.photo2, lightId + "_基座2_" + Date.now());
+            sheet.getRange(lastRow, 6).setValue(url2);
         }
 
         SpreadsheetApp.flush();
@@ -68,18 +74,21 @@ function doPost(e) {
     }
 }
 
-function saveFile(b64, folder, sheet, row, col, filename) {
+/**
+ * 參考 data-update-gas.js 的照片存檔方式
+ */
+function saveImageToDrive(base64Data, fileName) {
     try {
-        var parts = b64.split(",");
-        var bytes = Utilities.base64Decode(parts[1]);
-        var blob = Utilities.newBlob(bytes, "image/jpeg", filename);
+        var decoded = Utilities.base64Decode(base64Data.split(',')[1]);
+        var blob = Utilities.newBlob(decoded, 'image/jpeg', fileName + ".jpg");
+        var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        
+        // 取得檔案 ID 以建立預覽公式 (維持 IMAGE 預覽功能)
         var fileId = file.getId();
-        var formula = '=HYPERLINK("https://drive.google.com/file/d/' + fileId + '/view", IMAGE("https://drive.google.com/uc?export=view&id=' + fileId + '"))';
-        sheet.getRange(row, col).setFormula(formula);
+        return '=HYPERLINK("https://drive.google.com/file/d/' + fileId + '/view", IMAGE("https://drive.google.com/uc?export=view&id=' + fileId + '"))';
     } catch (e) {
-        console.warn("照片儲存失敗: " + e.toString());
-        sheet.getRange(row, col).setValue("照片上傳失敗: " + e.toString());
+        return "Upload Error: " + e.toString();
     }
 }
