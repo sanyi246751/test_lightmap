@@ -7,16 +7,17 @@ import React, { useState, useEffect } from 'react';
 import StreetLightMap from './components/StreetLightMap';
 import ReplaceLightView from './components/ReplaceLightView';
 import RepairReportView from './components/RepairReportView';
+import BaseSurveyView from './components/BaseSurveyView';
 import { StreetLightData } from './types';
 import { MapPin, Wrench, Settings, ClipboardCheck } from 'lucide-react';
 
-export type UserRole = 'officer' | 'maintenance' | 'admin' | null;
+export type UserRole = 'officer' | 'maintenance' | 'admin' | 'survey' | null;
 
 export default function App() {
   console.log("[App] Component initialized");
   const [role, setRole] = useState<UserRole>(null);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-  const [currentPage, setCurrentPage] = useState<'map' | 'replace' | 'report'>('map');
+  const [currentPage, setCurrentPage] = useState<'map' | 'replace' | 'report' | 'survey'>('map');
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [villageData, setVillageData] = useState<any>(null);
 
@@ -69,7 +70,7 @@ export default function App() {
         url.searchParams.delete('role');
         window.history.replaceState({}, '', url);
       }
-    } else if (roleParam === 'maintenance' || roleParam === 'officer') {
+    } else if (roleParam === 'maintenance' || roleParam === 'officer' || roleParam === 'survey') {
       setRole(roleParam as UserRole);
     }
   }, []);
@@ -134,6 +135,17 @@ export default function App() {
             </div>
           </button>
 
+          <button
+            onClick={() => handleRoleSelect('survey')}
+            className="bg-white p-5 rounded-[2rem] shadow-sm hover:shadow-md border-2 border-slate-100 flex items-center gap-4 transition-all active:scale-95"
+          >
+            <div className="p-3 bg-purple-100 text-purple-600 rounded-2xl"><ClipboardCheck className="w-8 h-8" /></div>
+            <div className="text-left flex-1">
+              <div className="text-xl font-bold">路燈基座調查</div>
+              <div className="text-sm text-slate-400 font-medium">基座調查系統</div>
+            </div>
+          </button>
+
         </div>
       </div>
     );
@@ -152,11 +164,16 @@ export default function App() {
             }
           }}
           onNavigateToReport={() => setCurrentPage('report')}
+          onNavigateToSurvey={() => setCurrentPage('survey')}
         />
       ) : currentPage === 'replace' ? (
         <ReplaceLightView
           lights={lights}
           villageData={villageData}
+          onBack={() => setCurrentPage('map')}
+        />
+      ) : currentPage === 'survey' ? (
+        <BaseSurveyView
           onBack={() => setCurrentPage('map')}
         />
       ) : (

@@ -134,13 +134,15 @@ const SearchBar = React.memo(({ onSearch }: { onSearch: (id: string) => void }) 
 export default function StreetLightMap({
   onNavigateToReplace,
   onNavigateToReport,
+  onNavigateToSurvey,
   villageData,
   role
 }: {
   onNavigateToReplace?: (data: StreetLightData[]) => void;
   onNavigateToReport?: () => void;
+  onNavigateToSurvey?: () => void;
   villageData: any;
-  role?: 'officer' | 'maintenance' | 'admin' | null;
+  role?: 'officer' | 'maintenance' | 'admin' | 'survey' | null;
 }) {
   const [lights, setLights] = useState<StreetLightData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -369,7 +371,7 @@ export default function StreetLightMap({
       )}
 
       {/* Bottom Right Actions */}
-      {(role !== 'maintenance' || role === 'maintenance') && (
+      {role !== null && (
         <div className="absolute bottom-[3px] right-[3px] z-[1000] flex flex-col items-center justify-center gap-1.5 bg-white/95 backdrop-blur-sm pt-[5px] px-[5px] pb-[3px] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200">
           {role === 'maintenance' && (
             <button
@@ -398,7 +400,7 @@ export default function StreetLightMap({
               </button>
             </>
           )}
-          {role !== 'maintenance' && (
+          {(role === 'officer' || role === 'admin') && (
             <button
               onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfWGZHxdMKfLZFyTVpaVU8oCW45KhCP5XzhmJn6StAW2_uIlA/viewform', '_blank')}
               className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-sm w-full leading-none"
@@ -407,6 +409,17 @@ export default function StreetLightMap({
               <span className="whitespace-nowrap translate-y-[1px]">路燈通報系統</span>
             </button>
           )}
+          
+          {(role === 'survey' || role === 'admin') && (
+            <button
+              onClick={() => onNavigateToSurvey?.()}
+              className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-purple-700 transition-all shadow-sm w-full leading-none"
+            >
+              <MapPin className="w-4 h-4 shrink-0" />
+              <span className="whitespace-nowrap translate-y-[1px]">基座調查系統</span>
+            </button>
+          )}
+
           <div className="text-[8px] text-slate-400 font-bold tracking-wide opacity-80 text-center w-full">
             02/26/2026 風行王者 <span className="text-[7px]">Design</span>
           </div>
