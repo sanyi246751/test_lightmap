@@ -289,10 +289,11 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         setUploadProgress(0);
         setUploadText("0.0%");
 
-        let a = prePhoto ? await compress(prePhoto) : "";
+        // 原圖上傳，保留 EXIF 資訊
+        let a = prePhoto || "";
         setUploadProgress(25); setUploadText("25%");
 
-        let b = postPhoto ? await compress(postPhoto) : "";
+        let b = postPhoto || "";
         setUploadProgress(50); setUploadText("50%");
 
         setUploadTitle("🚀 資料傳送中...");
