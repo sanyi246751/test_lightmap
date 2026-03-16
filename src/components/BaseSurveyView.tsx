@@ -33,7 +33,10 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const smoothIntervalRef = useRef<any>(null);
 
     useEffect(() => {
-        setRDate(new Date().toISOString().split("T")[0]);
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16);
+        setRDate(localISOTime);
         fetch(SHEET_URL)
             .then(r => r.json())
             .then(d => setLightsDict(d))
@@ -137,50 +140,58 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             if (type === 'pre') setPrePhoto(dataUrl);
             if (type === 'post') setPostPhoto(dataUrl);
 
-            setIsLocating(true);
+            // 只有「照片1」(pre) 才進行 GPS 定對與路燈匹配
+            if (type === 'pre') {
+                setIsLocating(true);
 
-            // 直接讀取 File object 的 EXIF
-            (EXIF as any).getData(file as any, function (this: any) {
-                // 1. 嘗試抓取日期
-                const exifDate = EXIF.getTag(this, "DateTimeOriginal");
-                if (exifDate) {
-                    const parts = exifDate.split(" ")[0].split(":");
-                    if (parts.length === 3) {
-                        setRDate(`${parts[0]}-${parts[1]}-${parts[2]}`);
+                // 直接讀取 File object 的 EXIF
+                (EXIF as any).getData(file as any, function (this: any) {
+                    // 1. 嘗試抓取日期與時間
+                    const exifDate = EXIF.getTag(this, "DateTimeOriginal");
+                    if (exifDate) {
+                        const parts = exifDate.split(" ");
+                        if (parts.length === 2) {
+                            const d = parts[0].split(":");
+                            const t = parts[1].split(":");
+                            if (d.length === 3 && t.length === 3) {
+                                setRDate(`${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`);
+                            }
+                        }
                     }
-                }
 
-                // 2. 嘗試抓取 GPS
-                const latArray = EXIF.getTag(this, "GPSLatitude");
-                const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-                const lngArray = EXIF.getTag(this, "GPSLongitude");
-                const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+                    // 2. 嘗試抓取 GPS
+                    const latArray = EXIF.getTag(this, "GPSLatitude");
+                    const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                    const lngArray = EXIF.getTag(this, "GPSLongitude");
+                    const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
 
-                if (latArray && latRef && lngArray && lngRef) {
-                    const lat = convertDMSToDD(latArray, latRef);
-                    const lng = convertDMSToDD(lngArray, lngRef);
-                    if (lat !== null && lng !== null) {
-                        findClosestLight(lat, lng);
-                        return; // 成功從照片讀取，直接結束
+                    if (latArray && latRef && lngArray && lngRef) {
+                        const lat = convertDMSToDD(latArray, latRef);
+                        const lng = convertDMSToDD(lngArray, lngRef);
+                        if (lat !== null && lng !== null) {
+                            findClosestLight(lat, lng);
+                            return; // 成功從照片讀取，直接結束
+                        }
                     }
-                }
 
-                // 3. 若照片無 GPS (常見於手機瀏覽器直接拍照)，退回使用瀏覽器定位
-                if ("geolocation" in navigator) {
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                            findClosestLight(pos.coords.latitude, pos.coords.longitude);
-                        },
-                        (err) => {
-                            console.warn("Fallback GPS failed:", err);
-                            setIsLocating(false);
-                        },
-                        { enableHighAccuracy: true, timeout: 5000 }
-                    );
-                } else {
-                    setIsLocating(false);
-                }
-            });
+                    // 3. 若照片無 GPS，退回使用瀏覽器定位
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                findClosestLight(pos.coords.latitude, pos.coords.longitude);
+                            },
+                            (err) => {
+                                console.warn("Fallback GPS failed:", err);
+                                setIsLocating(false);
+                            },
+                            { enableHighAccuracy: true, timeout: 5000 }
+                        );
+                    } else {
+                        setIsLocating(false);
+                    }
+                });
+            }
+            // 「照片2」(post) 僅作為圖片存檔，不讀取任何 EXIF (GPS 或時間)
         };
         reader.readAsDataURL(file);
     };
@@ -303,7 +314,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                     </div>
                     <label className="report-label" style={{ marginTop: '1rem' }}>調查時間</label>
                     <input
-                        type="date"
+                        type="datetime-local"
                         className="report-input-field"
                         value={rDate}
                         onChange={(e) => setRDate(e.target.value)}
