@@ -147,7 +147,11 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
     };
 
     const handlePick = (inputId: string) => {
-        document.getElementById(inputId)?.click();
+        const el = document.getElementById(inputId);
+        if (el) {
+            el.removeAttribute("capture");
+            el.click();
+        }
     };
 
     const handleCam = (inputId: string) => {
@@ -215,13 +219,14 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
 
         for (let i = 0; i < groups.length; i++) {
             let g = groups[i];
-            let a = await compress(g.pre!);
+            // 改為原圖上傳，保留 EXIF
+            let a = g.pre!; 
             currentStep++;
             let p1 = (currentStep / totalImgs) * 50;
             setUploadProgress(p1);
             setUploadText(p1.toFixed(1) + "%");
 
-            let b = await compress(g.post!);
+            let b = g.post!;
             currentStep++;
             let p2 = (currentStep / totalImgs) * 50;
             setUploadProgress(p2);
