@@ -32,6 +32,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const [uploadTitle, setUploadTitle] = useState("📤 正在處理資料");
 
     const smoothIntervalRef = useRef<any>(null);
+    const lastKnownLoc = useRef<{ lat: number; lng: number } | null>(null);
 
     useEffect(() => {
         const now = new Date();
@@ -45,14 +46,33 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     }, []);
 
     const handlePick = (inputId: string) => {
+        if (inputId.includes('id') || inputId.includes('pre')) {
+            preFetchLocation();
+        }
         document.getElementById(inputId)?.click();
     };
 
     const handleCam = (inputId: string) => {
+        if (inputId.includes('id') || inputId.includes('pre')) {
+            preFetchLocation();
+        }
         const el = document.getElementById(inputId);
         if (el) {
             el.setAttribute("capture", "environment");
             el.click();
+        }
+    };
+
+    const preFetchLocation = () => {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    lastKnownLoc.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    console.log("Pre-fetched location:", lastKnownLoc.current);
+                },
+                null, 
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
         }
     };
 
@@ -149,15 +169,12 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             // 只有「照片1」(pre) 或「路燈編號」(id) 才進行 GPS 定對與路燈匹配
             if (type === 'pre' || type === 'id') {
                 setIsLocating(true);
-                
-                // 安全機制：若 10 秒後還在讀取，強制停止轉圈
-                const safetyTimeout = setTimeout(() => setIsLocating(false), 10000);
+                const safetyTimeout = setTimeout(() => setIsLocating(false), 8000);
 
                 try {
-                    // 直接讀取 File object 的 EXIF
                     (EXIF as any).getData(file as any, function (this: any) {
+                        clearTimeout(safetyTimeout);
                         try {
-                            clearTimeout(safetyTimeout);
                             // 1. 嘗試抓取日期與時間
                             const exifDate = EXIF.getTag(this, "DateTimeOriginal");
                             if (exifDate) {
@@ -187,33 +204,28 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
 
                             if (exifLat !== null && exifLng !== null) {
                                 findClosestLight(exifLat, exifLng);
-                                return; // 成功從照片讀取，結束
+                                return;
                             }
 
-                            // 3. 若照片無 GPS 或經緯度解析失敗，退回使用瀏覽器定位
-                            if ("geolocation" in navigator) {
+                            // 3. 照片無 GPS，使用預抓的 location 或重新發起定位
+                            if (lastKnownLoc.current) {
+                                findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
+                            } else if ("geolocation" in navigator) {
                                 navigator.geolocation.getCurrentPosition(
-                                    (pos) => {
-                                        findClosestLight(pos.coords.latitude, pos.coords.longitude);
-                                    },
-                                    (err) => {
-                                        console.warn("Fallback GPS failed:", err);
-                                        setIsLocating(false);
-                                    },
+                                    (pos) => findClosestLight(pos.coords.latitude, pos.coords.longitude),
+                                    () => setIsLocating(false),
                                     { enableHighAccuracy: true, timeout: 5000 }
                                 );
                             } else {
                                 setIsLocating(false);
-                                console.warn("Geolocation not supported");
                             }
-                        } catch (err) {
-                            console.error("Inner EXIF parsing error:", err);
-                            clearTimeout(safetyTimeout);
+                        } catch (e) {
+                            console.error("EXIF callback error:", e);
                             setIsLocating(false);
                         }
                     });
                 } catch (err) {
-                    console.error("Outer EXIF parsing error:", err);
+                    console.error("EXIF trigger error:", err);
                     clearTimeout(safetyTimeout);
                     setIsLocating(false);
                 }
