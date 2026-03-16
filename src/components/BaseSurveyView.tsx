@@ -64,16 +64,42 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     };
 
     const preFetchLocation = () => {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    lastKnownLoc.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    console.log("Pre-fetched location:", lastKnownLoc.current);
-                },
-                null, 
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
+        if (!("geolocation" in navigator)) return;
+        
+        // 開始背景定位，但不鎖定 UI
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+                lastKnownLoc.current = { lat: latitude, lng: longitude };
+                console.log("[GPS] Background pre-fetch success:", latitude, longitude);
+                
+                // 如果目前輸入框是空的，可以考慮直接幫它算一下最近路燈 (悄悄進行)
+                if (!gpsLightId && lightsDict.length > 0) {
+                    findClosestLightQuietly(latitude, longitude);
+                }
+            },
+            (err) => console.warn("[GPS] Background pre-fetch failed:", err),
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    const findClosestLightQuietly = (lat: number, lng: number) => {
+        setGpsLat(lat);
+        setGpsLng(lng);
+        let minLightId = "";
+        let minD = Infinity;
+        for (let l of lightsDict) {
+            let lLat = parseFloat(l["緯度Latitude"]);
+            let lLng = parseFloat(l["經度Longitude"]);
+            if (!isNaN(lLat) && !isNaN(lLng)) {
+                let d = getDistance(lat, lng, lLat, lLng);
+                if (d < minD) {
+                    minD = d;
+                    minLightId = l["原路燈號碼"]?.trim() || "";
+                }
+            }
         }
+        if (minLightId) setGpsLightId(minLightId);
     };
 
     const convertDMSToDD = (dmsArray: any, ref: string) => {
@@ -169,66 +195,57 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             // 只有「照片1」(pre) 或「路燈編號」(id) 才進行 GPS 定對與路燈匹配
             if (type === 'pre' || type === 'id') {
                 setIsLocating(true);
-                const safetyTimeout = setTimeout(() => setIsLocating(false), 8000);
-
-                try {
-                    (EXIF as any).getData(file as any, function (this: any) {
-                        clearTimeout(safetyTimeout);
-                        try {
-                            // 1. 嘗試抓取日期與時間
-                            const exifDate = EXIF.getTag(this, "DateTimeOriginal");
-                            if (exifDate) {
-                                const parts = exifDate.split(" ");
-                                if (parts.length === 2) {
-                                    const d = parts[0].split(":");
-                                    const t = parts[1].split(":");
-                                    if (d.length === 3 && t.length === 3) {
-                                        setRDate(`${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`);
-                                    }
+                
+                (EXIF as any).getData(file as any, function (this: any) {
+                    try {
+                        // 1. 嘗試抓取日期與時間
+                        const exifDate = EXIF.getTag(this, "DateTimeOriginal");
+                        if (exifDate) {
+                            const parts = exifDate.split(" ");
+                            if (parts.length === 2) {
+                                const d = parts[0].split(":");
+                                const t = parts[1].split(":");
+                                if (d.length === 3 && t.length === 3) {
+                                    setRDate(`${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`);
                                 }
                             }
-
-                            // 2. 嘗試抓取 GPS
-                            const latArray = EXIF.getTag(this, "GPSLatitude");
-                            const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-                            const lngArray = EXIF.getTag(this, "GPSLongitude");
-                            const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
-
-                            let exifLat: number | null = null;
-                            let exifLng: number | null = null;
-
-                            if (latArray && latRef && lngArray && lngRef) {
-                                exifLat = convertDMSToDD(latArray, latRef);
-                                exifLng = convertDMSToDD(lngArray, lngRef);
-                            }
-
-                            if (exifLat !== null && exifLng !== null) {
-                                findClosestLight(exifLat, exifLng);
-                                return;
-                            }
-
-                            // 3. 照片無 GPS，使用預抓的 location 或重新發起定位
-                            if (lastKnownLoc.current) {
-                                findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
-                            } else if ("geolocation" in navigator) {
-                                navigator.geolocation.getCurrentPosition(
-                                    (pos) => findClosestLight(pos.coords.latitude, pos.coords.longitude),
-                                    () => setIsLocating(false),
-                                    { enableHighAccuracy: true, timeout: 5000 }
-                                );
-                            } else {
-                                setIsLocating(false);
-                            }
-                        } catch (e) {
-                            console.error("EXIF callback error:", e);
-                            setIsLocating(false);
                         }
-                    });
-                } catch (err) {
-                    console.error("EXIF trigger error:", err);
-                    clearTimeout(safetyTimeout);
-                    setIsLocating(false);
-                }
+
+                        // 2. 嘗試抓取 GPS
+                        const latArray = EXIF.getTag(this, "GPSLatitude");
+                        const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                        const lngArray = EXIF.getTag(this, "GPSLongitude");
+                        const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+                        let exifLat: number | null = null;
+                        let exifLng: number | null = null;
+                        if (latArray && latRef && lngArray && lngRef) {
+                            exifLat = convertDMSToDD(latArray, latRef);
+                            exifLng = convertDMSToDD(lngArray, lngRef);
+                        }
+
+                        if (exifLat !== null && exifLng !== null) {
+                            console.log("[Photo] Using EXIF GPS");
+                            findClosestLight(exifLat, exifLng);
+                            return;
+                        }
+
+                        // 3. 照片無 GPS，立刻檢查剛才預抓的座標
+                        if (lastKnownLoc.current) {
+                            console.log("[Photo] No EXIF, using pre-fetched GPS");
+                            findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
+                        } else {
+                            // 最後一招：重新發起定位 (通常此時使用者還在操作，可能會有 Toast 或提示)
+                            console.warn("[Photo] No GPS data available yet.");
+                            setIsLocating(false);
+                            // 不擋住畫面，只在背景抓抓看
+                            preFetchLocation();
+                        }
+                    } catch (e) {
+                        console.error("EXIF parsing error:", e);
+                        setIsLocating(false);
+                    }
+                });
             }
             // 「照片2」(post) 僅作為圖片存檔，不讀取任何 EXIF (GPS 或時間)
         };
