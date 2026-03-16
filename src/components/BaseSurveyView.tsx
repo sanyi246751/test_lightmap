@@ -143,9 +143,14 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             // 只有「照片1」(pre) 才進行 GPS 定對與路燈匹配
             if (type === 'pre') {
                 setIsLocating(true);
+            
+            // 安全機制：若 10 秒後還在讀取，強制停止轉圈
+            const safetyTimeout = setTimeout(() => setIsLocating(false), 10000);
 
-                // 直接讀取 File object 的 EXIF
+            // 直接讀取 File object 的 EXIF
+            try {
                 (EXIF as any).getData(file as any, function (this: any) {
+                    clearTimeout(safetyTimeout);
                     // 1. 嘗試抓取日期與時間
                     const exifDate = EXIF.getTag(this, "DateTimeOriginal");
                     if (exifDate) {
@@ -165,16 +170,20 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                     const lngArray = EXIF.getTag(this, "GPSLongitude");
                     const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
 
+                    let exifLat: number | null = null;
+                    let exifLng: number | null = null;
+
                     if (latArray && latRef && lngArray && lngRef) {
-                        const lat = convertDMSToDD(latArray, latRef);
-                        const lng = convertDMSToDD(lngArray, lngRef);
-                        if (lat !== null && lng !== null) {
-                            findClosestLight(lat, lng);
-                            return; // 成功從照片讀取，直接結束
-                        }
+                        exifLat = convertDMSToDD(latArray, latRef);
+                        exifLng = convertDMSToDD(lngArray, lngRef);
                     }
 
-                    // 3. 若照片無 GPS，退回使用瀏覽器定位
+                    if (exifLat !== null && exifLng !== null) {
+                        findClosestLight(exifLat, exifLng);
+                        return; // 成功從照片讀取，結束
+                    }
+
+                    // 3. 若照片無 GPS 或經緯度解析失敗，退回使用瀏覽器定位
                     if ("geolocation" in navigator) {
                         navigator.geolocation.getCurrentPosition(
                             (pos) => {
@@ -188,8 +197,13 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                         );
                     } else {
                         setIsLocating(false);
+                        console.warn("Geolocation not supported");
                     }
                 });
+            } catch (err) {
+                console.error("EXIF parsing error:", err);
+                setIsLocating(false);
+            }
             }
             // 「照片2」(post) 僅作為圖片存檔，不讀取任何 EXIF (GPS 或時間)
         };
