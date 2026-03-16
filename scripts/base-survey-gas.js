@@ -23,8 +23,8 @@ function doPost(e) {
         
         if (!sheet) {
             sheet = ss.insertSheet(SHEET_NAME);
-            sheet.appendRow(["調查時間", "GPS抓取路燈號碼", "緯度", "經度", "照片1", "照片2"]);
-            sheet.getRange("A1:F1").setFontWeight("bold");
+            sheet.appendRow(["調查時間", "GPS抓取路燈號碼", "緯度", "經度", "編號照片", "照片1", "照片2"]);
+            sheet.getRange("A1:G1").setFontWeight("bold");
         }
 
         var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
@@ -37,7 +37,7 @@ function doPost(e) {
         var lng = p.lng || "";
         
         // 寫入基本資料
-        var newRow = [dateStr, lightId, lat, lng, "", ""];
+        var newRow = [dateStr, lightId, lat, lng, "", "", ""];
         sheet.appendRow(newRow);
         var lastRow = sheet.getLastRow();
 
@@ -50,13 +50,17 @@ function doPost(e) {
 
         console.log("已新增列 " + lastRow + "，座標: " + lat + "," + lng + "，準備處理照片");
 
+        if (p.photo0 && p.photo0.length > 50) {
+            var url0 = saveImageToDrive(p.photo0, lightId + "_編號牌_" + Date.now());
+            sheet.getRange(lastRow, 5).setValue(url0);
+        }
         if (p.photo1 && p.photo1.length > 50) {
             var url1 = saveImageToDrive(p.photo1, lightId + "_基座1_" + Date.now());
-            sheet.getRange(lastRow, 5).setValue(url1);
+            sheet.getRange(lastRow, 6).setValue(url1);
         }
         if (p.photo2 && p.photo2.length > 50) {
             var url2 = saveImageToDrive(p.photo2, lightId + "_基座2_" + Date.now());
-            sheet.getRange(lastRow, 6).setValue(url2);
+            sheet.getRange(lastRow, 7).setValue(url2);
         }
 
         SpreadsheetApp.flush();

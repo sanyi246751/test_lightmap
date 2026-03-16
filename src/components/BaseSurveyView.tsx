@@ -23,6 +23,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
 
     const [prePhoto, setPrePhoto] = useState<string | null>(null);
     const [postPhoto, setPostPhoto] = useState<string | null>(null);
+    const [idPhoto, setIdPhoto] = useState<string | null>(null);
 
     const [isUploading, setIsUploading] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
@@ -120,7 +121,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'pre' | 'post') => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'pre' | 'post' | 'id') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -139,9 +140,10 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
 
             if (type === 'pre') setPrePhoto(dataUrl);
             if (type === 'post') setPostPhoto(dataUrl);
+            if (type === 'id') setIdPhoto(dataUrl);
 
-            // 只有「照片1」(pre) 才進行 GPS 定對與路燈匹配
-            if (type === 'pre') {
+            // 只有「照片1」(pre) 或「路燈編號」(id) 才進行 GPS 定對與路燈匹配
+            if (type === 'pre' || type === 'id') {
                 setIsLocating(true);
             
             // 安全機制：若 10 秒後還在讀取，強制停止轉圈
@@ -250,13 +252,16 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         setUploadText("0.0%");
 
         let a = prePhoto ? await compress(prePhoto) : "";
-        setUploadProgress(25); setUploadText("25%");
+        setUploadProgress(20); setUploadText("20%");
 
         let b = postPhoto ? await compress(postPhoto) : "";
-        setUploadProgress(50); setUploadText("50%");
+        setUploadProgress(40); setUploadText("40%");
+
+        let c = idPhoto ? await compress(idPhoto) : "";
+        setUploadProgress(60); setUploadText("60%");
 
         setUploadTitle("🚀 資料傳送中...");
-        startSmoothClimb(50.1, 98.5, 150);
+        startSmoothClimb(60.1, 98.5, 150);
 
         try {
             await fetch(SURVEY_SCRIPT_URL, {
@@ -269,7 +274,8 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                     lat: gpsLat,
                     lng: gpsLng,
                     photo1: a,
-                    photo2: b
+                    photo2: b,
+                    photo0: c
                 })
             });
 
@@ -281,6 +287,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                 alert("上傳成功！資料已寫入推算表。");
                 setPrePhoto(null);
                 setPostPhoto(null);
+                setIdPhoto(null);
                 setGpsLightId("");
                 setIsUploading(false);
             }, 800);
@@ -336,6 +343,34 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                 </div>
 
                 <div id="photoContainer">
+                    <div className="report-photo-card" style={{ marginBottom: '1.5rem' }}>
+                        <div className="report-photo-header">
+                            <div>📸 路燈編號拍照 (定位基準)</div>
+                        </div>
+                        <div className="report-photo-body">
+                            <div className="report-upload-box" style={{ height: '120px' }} onClick={() => !idPhoto && handlePick(`f-id`)}>
+                                {!idPhoto ? (
+                                    <div className="report-upload-icon">點擊上傳或拍照📷</div>
+                                ) : (
+                                    <>
+                                        <button className="report-remove-btn" onClick={(e) => { e.stopPropagation(); setIdPhoto(null); }}>✕</button>
+                                        <img src={idPhoto} alt="id-plate" style={{ objectFit: 'contain' }} />
+                                    </>
+                                )}
+                            </div>
+                            {!idPhoto && (
+                                <button className="report-cam-btn" onClick={() => handleCam(`f-id`)}>📸 拍號碼牌自動定位</button>
+                            )}
+                            <input
+                                type="file"
+                                className="hidden"
+                                id={`f-id`}
+                                accept="image/*"
+                                onChange={(e) => handleFileChange(e, 'id')}
+                            />
+                        </div>
+                    </div>
+
                     <div className="report-photo-card">
                         <div className="report-photo-header">
                             <div>📸 基座照片上傳</div>
