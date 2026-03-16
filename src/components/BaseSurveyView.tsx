@@ -7,7 +7,7 @@ import { SHEET_URL } from '../constants';
 import { StreetLightLocation } from '../types';
 
 // GAS WEB APP URL 供使用者日後自行替換
-const SURVEY_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw60zL-FjF22K67D5u_C7A_iYx8OIKf8f1rD5nS3D8X/exec"; 
+const SURVEY_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwAy3gjvGTXllNFKPhE3VEiPos7kZXn1qUWxUbZ6tPnicu7lOY3leznPl1-2J0yM24wPA/exec";
 
 interface BaseSurveyViewProps {
     onBack: () => void;
@@ -16,18 +16,18 @@ interface BaseSurveyViewProps {
 export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const [rDate, setRDate] = useState("");
     const [gpsLightId, setGpsLightId] = useState<string>("");
-    
+
     const [lightsDict, setLightsDict] = useState<StreetLightLocation[]>([]);
-    
+
     const [prePhoto, setPrePhoto] = useState<string | null>(null);
     const [postPhoto, setPostPhoto] = useState<string | null>(null);
-    
+
     const [isUploading, setIsUploading] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadText, setUploadText] = useState("0.0%");
     const [uploadTitle, setUploadTitle] = useState("📤 正在處理資料");
-    
+
     const smoothIntervalRef = useRef<any>(null);
 
     useEffect(() => {
@@ -56,7 +56,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         let d = getVal(dmsArray[0]);
         let m = getVal(dmsArray[1]);
         let s = getVal(dmsArray[2]);
-        let dd = d + m/60 + s/3600;
+        let dd = d + m / 60 + s / 3600;
         if (ref === "S" || ref === "W") dd *= -1;
         return dd;
     };
@@ -66,10 +66,10 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         const rad = Math.PI / 180;
         const dLat = (lat2 - lat1) * rad;
         const dLon = (lon2 - lon1) * rad;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     };
 
@@ -222,7 +222,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
 
         let a = prePhoto ? await compress(prePhoto) : "";
         setUploadProgress(25); setUploadText("25%");
-        
+
         let b = postPhoto ? await compress(postPhoto) : "";
         setUploadProgress(50); setUploadText("50%");
 
@@ -281,7 +281,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                             onChange={(e) => setGpsLightId(e.target.value)}
                             style={{ margin: 0, border: isLocating ? '2px solid #a855f7' : undefined }}
                         />
-                        <button 
+                        <button
                             className="bg-purple-100 text-purple-600 px-3 rounded-lg font-bold text-sm whitespace-nowrap flex-shrink-0 active:bg-purple-200"
                             onClick={handleManualGPS}
                             style={{ margin: 0 }}
