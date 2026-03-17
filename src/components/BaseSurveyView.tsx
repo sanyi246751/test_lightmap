@@ -178,15 +178,6 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const tempUrl = URL.createObjectURL(file);
-        const link = document.createElement('a');
-        link.href = tempUrl;
-        link.download = `${type === 'pre' ? '照片1' : '照片2'}_${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(tempUrl);
-
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;

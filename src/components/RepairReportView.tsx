@@ -96,16 +96,6 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 強製下載原檔至手機，確保取消上傳也能保留
-        const tempUrl = URL.createObjectURL(file);
-        const link = document.createElement('a');
-        link.href = tempUrl;
-        link.download = `${type === 'pre' ? '維修前' : '維修後'}_${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(tempUrl);
-
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;

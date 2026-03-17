@@ -240,16 +240,6 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 強製下載原檔至手機，確保取消上傳也能保留
-        const tempUrl = URL.createObjectURL(file);
-        const link = document.createElement('a');
-        link.href = tempUrl;
-        link.download = `路燈置換_${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(tempUrl);
-
         setIsProcessingImage(true);
         console.log(`[Photo] Processing ${mode} file:`, file.name, file.type, file.size);
 
