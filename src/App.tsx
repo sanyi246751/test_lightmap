@@ -72,6 +72,9 @@ export default function App() {
       }
     } else if (roleParam === 'maintenance' || roleParam === 'officer' || roleParam === 'survey') {
       setRole(roleParam as UserRole);
+      if (roleParam === 'survey') {
+        setCurrentPage('survey');
+      }
     }
   }, []);
 
@@ -88,6 +91,9 @@ export default function App() {
     }
 
     setRole(selectedRole);
+    if (selectedRole === 'survey') {
+      setCurrentPage('survey');
+    }
     if (selectedRole) {
       const url = new URL(window.location.href);
       url.searchParams.set('role', selectedRole);
@@ -125,17 +131,6 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => handleRoleSelect('admin')}
-            className="bg-white p-5 rounded-[2rem] shadow-sm hover:shadow-md border-2 border-slate-100 flex items-center gap-4 transition-all active:scale-95"
-          >
-            <div className="p-3 bg-orange-100 text-[#FF8C69] rounded-2xl"><Settings className="w-8 h-8" /></div>
-            <div className="text-left flex-1">
-              <div className="text-xl font-bold">管理單位</div>
-              <div className="text-sm text-slate-400 font-medium">全部</div>
-            </div>
-          </button>
-
-          <button
             onClick={() => handleRoleSelect('survey')}
             className="bg-white p-5 rounded-[2rem] shadow-sm hover:shadow-md border-2 border-slate-100 flex items-center gap-4 transition-all active:scale-95"
           >
@@ -143,6 +138,17 @@ export default function App() {
             <div className="text-left flex-1">
               <div className="text-xl font-bold">路燈基座調查</div>
               <div className="text-sm text-slate-400 font-medium">基座調查系統</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleRoleSelect('admin')}
+            className="bg-white p-5 rounded-[2rem] shadow-sm hover:shadow-md border-2 border-slate-100 flex items-center gap-4 transition-all active:scale-95"
+          >
+            <div className="p-3 bg-orange-100 text-[#FF8C69] rounded-2xl"><Settings className="w-8 h-8" /></div>
+            <div className="text-left flex-1">
+              <div className="text-xl font-bold">管理單位</div>
+              <div className="text-sm text-slate-400 font-medium">全部</div>
             </div>
           </button>
 
