@@ -178,6 +178,21 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // 判斷是否為拍照模式 (帶有 capture 屬性)
+        const isCamera = e.target.hasAttribute("capture");
+
+        if (isCamera) {
+            // 只有「拍照上傳」才強制下載原檔至手機備份
+            const tempUrl = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = tempUrl;
+            link.download = `${type === 'pre' ? '照片1' : '照片2'}_${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(tempUrl);
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;
