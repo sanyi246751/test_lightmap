@@ -89,7 +89,6 @@ function doPost(e) {
         // 強制設定前 9 欄為純文字格式
         historySheet.getRange("A1:I20000").setNumberFormat("@");
 
-        var payload = JSON.parse(e.postData.contents);
         var action = payload.action || "update";
         var targetId = String(payload.id).replace(/'/g, '').trim();
 

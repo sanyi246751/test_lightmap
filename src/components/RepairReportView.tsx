@@ -262,7 +262,6 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
 
         for (let i = 0; i < groups.length; i++) {
             let g = groups[i];
-            // 改為原圖上傳，保留 EXIF
             let a = g.pre!;
             currentStep++;
             let p1 = (currentStep / totalImgs) * 50;
@@ -281,7 +280,8 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
         setUploadTitle("🚀 資料傳送中...");
         startSmoothClimb(50.1, 98.5, 150);
 
-        let cur = projectData.find(d => d.row === selectedItem);
+        // 核心修正：將比較對象統一轉為字串，避免 row (數字) !== selectedItem (字串) 的問題
+        let cur = projectData.find(d => String(d.row) === String(selectedItem));
 
         try {
             const finalNote = noteSelect === "其他" ? noteText : noteSelect;
