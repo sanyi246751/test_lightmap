@@ -458,7 +458,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                         <div className="report-photo-body">
                             <div className="comparison-grid">
                                 <div>
-                                    <div className="comp-label">照片1 (維修前)</div>
+                                    <div className="comp-label">照片1 (路燈編號)</div>
                                     <div className="report-upload-box" onClick={() => !prePhoto && handlePick(`f-pre`)}>
                                         {!prePhoto ? (
                                             <div className="report-upload-icon">照片上傳📷</div>
@@ -481,7 +481,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                                     />
                                 </div>
                                 <div>
-                                    <div className="comp-label">照片2 (維修後)</div>
+                                    <div className="comp-label">照片2 (路燈基座)</div>
                                     <div className="report-upload-box" onClick={() => !postPhoto && handlePick(`f-post`)}>
                                         {!postPhoto ? (
                                             <div className="report-upload-icon">照片上傳📷</div>

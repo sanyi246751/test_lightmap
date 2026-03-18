@@ -29,7 +29,7 @@ function doPost(e) {
 
         var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
         var now = new Date();
-        var timeStamp = Utilities.formatDate(now, "GMT+8", "yyyyMMddHHmmss");
+        var timeStr = Utilities.formatDate(now, "GMT+8", "yyyyMMddHHmm");
         
         var dateStr = p.dateStr || "";
         var lightId = p.lightId || "未知";
@@ -51,11 +51,11 @@ function doPost(e) {
         console.log("已新增列 " + lastRow + "，座標: " + lat + "," + lng + "，準備處理照片");
 
         if (p.photo1 && p.photo1.length > 50) {
-            var url1 = saveImageToDrive(p.photo1, lightId + "_基座1_" + Date.now());
+            var url1 = saveImageToDrive(p.photo1, lightId + "_基座1_" + timeStr);
             sheet.getRange(lastRow, 5).setValue(url1);
         }
         if (p.photo2 && p.photo2.length > 50) {
-            var url2 = saveImageToDrive(p.photo2, lightId + "_基座2_" + Date.now());
+            var url2 = saveImageToDrive(p.photo2, lightId + "_基座2_" + timeStr);
             sheet.getRange(lastRow, 6).setValue(url2);
         }
 

@@ -52,9 +52,9 @@ function doPost(e) {
         var finalDate = p.dateStr.replace(/-/g, "/");
         sheet.getRange(row, 9).setValue(finalDate);
 
-        // 2. 處理檔名用的時間戳記
-        var now = new Date();
-        var timeStamp = Utilities.formatDate(now, "GMT+8", "yyyyMMddHHmmss");
+        // 2. 處理檔名用的時間碼 (yyyyMMddHHmm)
+        var timeStr = Utilities.formatDate(now, "GMT+8", "yyyyMMddHHmm");
+        var lightId = p.nameB || "未知";
 
         // 3. 寫入 L 欄：維修說明 (備註)
         sheet.getRange(row, 12).setValue(p.note);
@@ -62,21 +62,19 @@ function doPost(e) {
         // 4. 處理多組前/後對比照片
         if (p.photos && p.photos.length > 0) {
             p.photos.forEach(function (pair, index) {
-                // 計算起始欄位：J 為 10，L 為 12 (須避開備註欄)
                 var startCol = 10 + (index * 2);
                 if (startCol >= 12) startCol += 1;
 
-                var groupNum = "第" + (index + 1) + "組";
-                var idNum = "編號" + p.nameB;
+                var groupSuffix = p.photos.length > 1 ? ("_組" + (index + 1)) : "";
 
                 // 儲存維修前照片
                 if (pair.pre) {
-                    var fileNamePre = timeStamp + groupNum + idNum + "前.jpg";
+                    var fileNamePre = lightId + "_" + timeStr + groupSuffix + "_前";
                     saveFile(pair.pre, folder, sheet, row, startCol, fileNamePre);
                 }
                 // 儲存維修後照片
                 if (pair.post) {
-                    var fileNamePost = timeStamp + groupNum + idNum + "後.jpg";
+                    var fileNamePost = lightId + "_" + timeStr + groupSuffix + "_後";
                     saveFile(pair.post, folder, sheet, row, startCol + 1, fileNamePost);
                 }
             });

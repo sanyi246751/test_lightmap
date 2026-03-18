@@ -191,7 +191,8 @@ function doPost(e) {
         // 處理照片上傳
         var photoUrl = "";
         if (payload.image) {
-            photoUrl = saveImageToDrive(payload.image, targetId + "_" + Date.now());
+            var timeStr = Utilities.formatDate(new Date(), "GMT+8", "yyyyMMddHHmm");
+            photoUrl = saveImageToDrive(payload.image, targetId + "_" + timeStr);
         }
 
         var safeLat = String(lat);
