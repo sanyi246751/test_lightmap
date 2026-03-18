@@ -33,6 +33,12 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const smoothIntervalRef = useRef<any>(null);
     const lastKnownLoc = useRef<{ lat: number; lng: number } | null>(null);
 
+    const [toast, setToast] = useState<{ msg: string; show: boolean }>({ msg: "", show: false });
+    const showToast = (msg: string) => {
+        setToast({ msg, show: true });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
+
     useEffect(() => {
         const now = new Date();
         const offset = now.getTimezoneOffset() * 60000;
@@ -174,13 +180,84 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'pre' | 'post') => {
+    // --- 手寫二進制 EXIF 解析引擎 (最強相容性) ---
+    const extractEXIFManual = (buffer: ArrayBuffer) => {
+        const dv = new DataView(buffer);
+        if (dv.getUint16(0) !== 0xFFD8) return null;
+
+        let offset = 2;
+        while (offset < dv.byteLength) {
+            const marker = dv.getUint16(offset);
+            if (marker === 0xFFE1) return parseExifFull(dv, offset + 4);
+            if ((marker & 0xFF00) !== 0xFF) break;
+            offset += 2 + dv.getUint16(offset + 2);
+        }
+        return null;
+    };
+
+    const parseExifFull = (dv: DataView, offset: number) => {
+        if (dv.getUint32(offset) !== 0x45786966) return null;
+        const little = dv.getUint16(offset + 6) === 0x4949;
+        const ifd0Off = dv.getUint32(offset + 10, little);
+        const entries = dv.getUint16(offset + 6 + ifd0Off, little);
+
+        let res: { date?: string; lat?: number; lng?: number } = {};
+        let exifOff = -1;
+        let gpsOff = -1;
+
+        for (let i = 0; i < entries; i++) {
+            const off = offset + 6 + ifd0Off + 2 + i * 12;
+            const tag = dv.getUint16(off, little);
+            if (tag === 0x8769) exifOff = dv.getUint32(off + 8, little);
+            if (tag === 0x8825) gpsOff = dv.getUint32(off + 8, little);
+        }
+
+        if (exifOff !== -1) {
+            const exifEntries = dv.getUint16(offset + 6 + exifOff, little);
+            for (let i = 0; i < exifEntries; i++) {
+                const off = offset + 6 + exifOff + 2 + i * 12;
+                const tag = dv.getUint16(off, little);
+                if (tag === 0x9003 || tag === 0x0132) {
+                    const valOff = dv.getUint32(off + 8, little) + offset + 6;
+                    let s = "";
+                    for (let j = 0; j < 19; j++) s += String.fromCharCode(dv.getUint8(valOff + j));
+                    const p = s.split(" ");
+                    if (p.length === 2) {
+                        res.date = p[0].replace(/:/g, "-") + "T" + p[1].substring(0, 5);
+                    }
+                }
+            }
+        }
+
+        if (gpsOff !== -1) {
+            const gpsEntries = dv.getUint16(offset + 6 + gpsOff, little);
+            let lat, lng, latRef = 'N', lngRef = 'E';
+            const getRat = (off: number) => {
+                const n = dv.getUint32(off, little), d = dv.getUint32(off + 4, little);
+                return d === 0 ? 0 : n / d;
+            };
+            for (let i = 0; i < gpsEntries; i++) {
+                const off = offset + 6 + gpsOff + 2 + i * 12;
+                const tag = dv.getUint16(off, little);
+                const sub = dv.getUint32(off + 8, little) + offset + 6;
+                if (tag === 1) latRef = String.fromCharCode(dv.getUint8(off + 8)) === 'S' ? 'S' : 'N';
+                if (tag === 2) lat = getRat(sub) + getRat(sub + 8) / 60 + getRat(sub + 16) / 3600;
+                if (tag === 3) lngRef = String.fromCharCode(dv.getUint8(off + 8)) === 'W' ? 'W' : 'E';
+                if (tag === 4) lng = getRat(sub) + getRat(sub + 8) / 60 + getRat(sub + 16) / 3600;
+            }
+            if (lat !== undefined && lng !== undefined) {
+                res.lat = latRef === 'S' ? -lat : lat;
+                res.lng = lngRef === 'W' ? -lng : lng;
+            }
+        }
+        return res;
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'pre' | 'post') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 判斷是否為拍照模式 (帶有 capture 屬性)
         const isCamera = e.target.hasAttribute("capture");
-
         if (isCamera) {
             const tempUrl = URL.createObjectURL(file);
             const link = document.createElement('a');
@@ -192,64 +269,40 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             URL.revokeObjectURL(tempUrl);
         }
 
-        // 1. 優先處理 EXIF (只有照片1才可以自動抓時間與座標)
         if (type === 'pre') {
             setIsLocating(true);
-            const processExif = async () => {
-                try {
-                    const buffer = await file.arrayBuffer();
-                    const tags = (EXIF as any).readFromBinaryFile(buffer);
-                    if (tags) {
-                        // (A) 調查時間自動抓取
-                        const exifDate = tags.DateTimeOriginal || tags.DateTime;
-                        if (exifDate) {
-                            const parts = exifDate.split(" ");
-                            if (parts.length === 2) {
-                                const d = parts[0].split(":");
-                                const t = parts[1].split(":");
-                                if (d.length === 3 && t.length === 3) {
-                                    const dtStr = `${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`;
-                                    setRDate(dtStr);
-                                    console.log("[EXIF] Update datetime to:", dtStr);
-                                }
-                            }
-                        }
-
-                        // (B) GPS 座標抓取
-                        let exifLat: number | null = null;
-                        let exifLng: number | null = null;
-                        if (tags.GPSLatitude && tags.GPSLatitudeRef && tags.GPSLongitude && tags.GPSLongitudeRef) {
-                            exifLat = convertDMSToDD(tags.GPSLatitude, tags.GPSLatitudeRef);
-                            exifLng = convertDMSToDD(tags.GPSLongitude, tags.GPSLongitudeRef);
-                        }
-
-                        if (exifLat !== null && exifLng !== null) {
-                            console.log("[EXIF] GPS found:", exifLat, exifLng);
-                            findClosestLight(exifLat, exifLng);
-                            return; // 流程結束
-                        }
-                    } else {
-                        console.warn("[EXIF] No tags found");
+            try {
+                const buffer = await file.arrayBuffer();
+                const data = extractEXIFManual(buffer);
+                if (data) {
+                    if (data.date) {
+                        setRDate(data.date);
+                        showToast(`📅 自動校對拍照時間: ${data.date.replace("T", " ")}`);
                     }
-                } catch (e) {
-                    console.error("[EXIF] Reader Error:", e);
+                    if (data.lat && data.lng) {
+                        showToast("📍 成功讀取照片 GPS 座標");
+                        findClosestLight(data.lat, data.lng);
+                        return; // 流程結束
+                    }
                 }
+                showToast("⚠️ 照片中找不到座標，切換背景定位...");
+            } catch (err) {
+                console.error("Manual EXIF Error", err);
+            }
 
-                // 2. 若照片無 GPS 或解析失敗，進入背景備援定位
-                if (lastKnownLoc.current) {
-                    console.log("[GPS] Using pre-fetched coordinates");
-                    findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
-                } else if ("geolocation" in navigator) {
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => findClosestLight(pos.coords.latitude, pos.coords.longitude),
-                        () => setIsLocating(false),
-                        { enableHighAccuracy: true, timeout: 5000 }
-                    );
-                } else {
-                    setIsLocating(false);
-                }
-            };
-            processExif();
+            if (lastKnownLoc.current) {
+                showToast("📡 採用背景預抓 GPS 定位");
+                findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
+            } else if ("geolocation" in navigator) {
+                showToast("🔍 正在嘗試啟動 GPS...");
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { showToast("✅ 已成功獲取位置資訊"); findClosestLight(pos.coords.latitude, pos.coords.longitude); },
+                    () => { showToast("⚠️ 無法獲取目前位置"); setIsLocating(false); },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                setIsLocating(false);
+            }
         }
 
         const reader = new FileReader();

@@ -39,6 +39,12 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
     const [uploadText, setUploadText] = useState("0.0%");
     const [uploadTitle, setUploadTitle] = useState("📤 正在處理資料");
 
+    const [toast, setToast] = useState<{ msg: string; show: boolean }>({ msg: "", show: false });
+    const showToast = (msg: string) => {
+        setToast({ msg, show: true });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
+
     const smoothIntervalRef = useRef<any>(null);
 
     useEffect(() => {
@@ -92,15 +98,52 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, groupId: number, type: 'pre' | 'post') => {
+    // --- 手寫二進制 EXIF 解析引擎 (最穩定，不依賴套件) ---
+    const extractEXIFManual = (buffer: ArrayBuffer) => {
+        const dv = new DataView(buffer);
+        if (dv.getUint16(0) !== 0xFFD8) return null; 
+
+        let offset = 2;
+        while (offset < dv.byteLength) {
+            const marker = dv.getUint16(offset);
+            if (marker === 0xFFE1) return parseExifSimple(dv, offset + 4);
+            if ((marker & 0xFF00) !== 0xFF) break;
+            offset += 2 + dv.getUint16(offset + 2);
+        }
+        return null;
+    };
+
+    const parseExifSimple = (dv: DataView, offset: number) => {
+        if (dv.getUint32(offset) !== 0x45786966) return null;
+        const little = dv.getUint16(offset + 6) === 0x4949;
+        const ifd0Off = dv.getUint32(offset + 10, little);
+        const entries = dv.getUint16(offset + 6 + ifd0Off, little);
+        let exifOff = -1;
+        for (let i = 0; i < entries; i++) {
+            const off = offset + 6 + ifd0Off + 2 + i * 12;
+            if (dv.getUint16(off, little) === 0x8769) exifOff = dv.getUint32(off + 8, little);
+        }
+        if (exifOff === -1) return null;
+        const exifEntries = dv.getUint16(offset + 6 + exifOff, little);
+        for (let i = 0; i < exifEntries; i++) {
+            const off = offset + 6 + exifOff + 2 + i * 12;
+            const tag = dv.getUint16(off, little);
+            if (tag === 0x9003 || tag === 0x0132) {
+                const valOff = dv.getUint32(off + 8, little) + offset + 6;
+                let s = "";
+                for (let j = 0; j < 10; j++) s += String.fromCharCode(dv.getUint8(valOff + j));
+                return { date: s.replace(/:/g, "-") };
+            }
+        }
+        return null;
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, groupId: number, type: 'pre' | 'post') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 判斷是否為拍照模式 (帶有 capture 屬性)
         const isCamera = e.target.hasAttribute("capture");
-
         if (isCamera) {
-            // 只有「拍照上傳」才強制下載原檔至手機備份
             const tempUrl = URL.createObjectURL(file);
             const link = document.createElement('a');
             link.href = tempUrl;
@@ -111,41 +154,26 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
             URL.revokeObjectURL(tempUrl);
         }
 
-        // 1. 優先處理 EXIF 日期 (只有維修前照片 pre 才偵測)
         if (type === 'pre') {
-            const processExif = async () => {
-                try {
-                    const buffer = await file.arrayBuffer();
-                    const tags = (EXIF as any).readFromBinaryFile(buffer);
-                    if (tags) {
-                        const exifDate = tags.DateTimeOriginal || tags.DateTime;
-                        console.log("[EXIF] Found tags:", tags);
-                        if (exifDate) {
-                            const parts = exifDate.split(" ")[0].split(":");
-                            if (parts.length === 3) {
-                                const dateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
-                                setRDate(dateStr);
-                                console.log("[EXIF] Date updated to:", dateStr);
-                            }
-                        } else {
-                            console.warn("[EXIF] No date tags found in image.");
-                        }
-                    }
-                } catch (err) {
-                    console.error("[EXIF] Binary read error:", err);
+            try {
+                const buffer = await file.arrayBuffer();
+                const data = extractEXIFManual(buffer);
+                if (data && data.date) {
+                    setRDate(data.date);
+                    showToast(`📅 已自動填入拍照日期: ${data.date}`);
+                } else {
+                    showToast("⚠️ 照片中找不到日期資訊");
                 }
-            };
-            processExif();
+            } catch (err) {
+                console.error("EXIF manual read error", err);
+            }
         }
 
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;
-
             setGroups(prev => prev.map(g => {
-                if (g.id === groupId) {
-                    return { ...g, [type]: dataUrl };
-                }
+                if (g.id === groupId) return { ...g, [type]: dataUrl };
                 return g;
             }));
         };
