@@ -275,32 +275,37 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                 const buffer = await file.arrayBuffer();
                 const data = extractEXIFManual(buffer);
                 if (data) {
+                    // 1. 更新時間 (datetime-local 格式需為 YYYY-MM-DDTHH:mm)
                     if (data.date) {
                         setRDate(data.date);
                         showToast(`📅 自動校對拍照時間: ${data.date.replace("T", " ")}`);
                     }
+                    // 2. 更新座標與搜尋最近路燈
                     if (data.lat && data.lng) {
+                        setGpsLat(data.lat);
+                        setGpsLng(data.lng);
                         showToast("📍 成功讀取照片 GPS 座標");
                         findClosestLight(data.lat, data.lng);
-                        return; // 流程結束
+                        // 注意：這裡不 return，要讓後面的 reader 跑完顯示照片
+                    } else {
+                        showToast("⚠️ 照片中無座標，嘗試手機定位...");
+                        // 照片無座標才啟動備援定位
+                        if (lastKnownLoc.current) {
+                            showToast("📡 採用背景預抓 GPS");
+                            findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
+                        } else if ("geolocation" in navigator) {
+                            navigator.geolocation.getCurrentPosition(
+                                (pos) => { showToast("✅ 定位完成"); findClosestLight(pos.coords.latitude, pos.coords.longitude); },
+                                () => { showToast("⚠️ 定位失敗"); setIsLocating(false); },
+                                { enableHighAccuracy: true, timeout: 5000 }
+                            );
+                        } else {
+                            setIsLocating(false);
+                        }
                     }
                 }
-                showToast("⚠️ 照片中找不到座標，切換背景定位...");
             } catch (err) {
                 console.error("Manual EXIF Error", err);
-            }
-
-            if (lastKnownLoc.current) {
-                showToast("📡 採用背景預抓 GPS 定位");
-                findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
-            } else if ("geolocation" in navigator) {
-                showToast("🔍 正在嘗試啟動 GPS...");
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => { showToast("✅ 已成功獲取位置資訊"); findClosestLight(pos.coords.latitude, pos.coords.longitude); },
-                    () => { showToast("⚠️ 無法獲取目前位置"); setIsLocating(false); },
-                    { enableHighAccuracy: true, timeout: 5000 }
-                );
-            } else {
                 setIsLocating(false);
             }
         }
