@@ -182,7 +182,6 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         const isCamera = e.target.hasAttribute("capture");
 
         if (isCamera) {
-            // 只有「拍照上傳」才強制下載原檔至手機備份
             const tempUrl = URL.createObjectURL(file);
             const link = document.createElement('a');
             link.href = tempUrl;
@@ -193,69 +192,67 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             URL.revokeObjectURL(tempUrl);
         }
 
+        // 1. 優先處理 EXIF (只有照片1才可以自動抓時間與座標)
+        if (type === 'pre') {
+            setIsLocating(true);
+            (EXIF as any).getData(file as any, function (this: any) {
+                try {
+                    // (A) 調查時間自動抓取
+                    const exifDate = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
+                    console.log("[EXIF] Raw Date Found:", exifDate);
+                    if (exifDate) {
+                        const parts = exifDate.split(" ");
+                        if (parts.length === 2) {
+                            const d = parts[0].split(":");
+                            const t = parts[1].split(":");
+                            if (d.length === 3 && t.length === 3) {
+                                const dtStr = `${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`;
+                                setRDate(dtStr);
+                                console.log("[EXIF] Update Survey Time to:", dtStr);
+                            }
+                        }
+                    }
+
+                    // (B) 抓取 GPS
+                    const latArray = EXIF.getTag(this, "GPSLatitude");
+                    const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                    const lngArray = EXIF.getTag(this, "GPSLongitude");
+                    const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+                    let exifLat: number | null = null;
+                    let exifLng: number | null = null;
+                    if (latArray && latRef && lngArray && lngRef) {
+                        exifLat = convertDMSToDD(latArray, latRef);
+                        exifLng = convertDMSToDD(lngArray, lngRef);
+                    }
+
+                    if (exifLat !== null && exifLng !== null) {
+                        console.log("[EXIF] Found GPS coords:", exifLat, exifLng);
+                        findClosestLight(exifLat, exifLng);
+                    } else if (lastKnownLoc.current) {
+                        console.log("[GPS] No EXIF, using pre-fetched GPS fallback");
+                        findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
+                    } else if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => findClosestLight(pos.coords.latitude, pos.coords.longitude),
+                            () => setIsLocating(false),
+                            { enableHighAccuracy: true, timeout: 5000 }
+                        );
+                    } else {
+                        setIsLocating(false);
+                    }
+                } catch (e) {
+                    console.error("EXIF parsing logic error:", e);
+                    setIsLocating(false);
+                }
+            });
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;
-
             if (type === 'pre') setPrePhoto(dataUrl);
             if (type === 'post') setPostPhoto(dataUrl);
-
-            // 只有「照片1」(pre) 才進行調查時間校正與 GPS 路燈匹配
-            if (type === 'pre') {
-                setIsLocating(true);
-                
-                (EXIF as any).getData(file as any, function (this: any) {
-                    try {
-                        // 1. 嘗試抓取日期與時間
-                        const exifDate = EXIF.getTag(this, "DateTimeOriginal");
-                        if (exifDate) {
-                            const parts = exifDate.split(" ");
-                            if (parts.length === 2) {
-                                const d = parts[0].split(":");
-                                const t = parts[1].split(":");
-                                if (d.length === 3 && t.length === 3) {
-                                    setRDate(`${d[0]}-${d[1]}-${d[2]}T${t[0]}:${t[1]}`);
-                                }
-                            }
-                        }
-
-                        // 2. 嘗試抓取 GPS
-                        const latArray = EXIF.getTag(this, "GPSLatitude");
-                        const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-                        const lngArray = EXIF.getTag(this, "GPSLongitude");
-                        const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
-
-                        let exifLat: number | null = null;
-                        let exifLng: number | null = null;
-                        if (latArray && latRef && lngArray && lngRef) {
-                            exifLat = convertDMSToDD(latArray, latRef);
-                            exifLng = convertDMSToDD(lngArray, lngRef);
-                        }
-
-                        if (exifLat !== null && exifLng !== null) {
-                            console.log("[Photo] Using EXIF GPS");
-                            findClosestLight(exifLat, exifLng);
-                            return;
-                        }
-
-                        // 3. 照片無 GPS，立刻檢查剛才預抓的座標
-                        if (lastKnownLoc.current) {
-                            console.log("[Photo] No EXIF, using pre-fetched GPS");
-                            findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
-                        } else {
-                            // 最後一招：重新發起定位 (通常此時使用者還在操作，可能會有 Toast 或提示)
-                            console.warn("[Photo] No GPS data available yet.");
-                            setIsLocating(false);
-                            // 不擋住畫面，只在背景抓抓看
-                            preFetchLocation();
-                        }
-                    } catch (e) {
-                        console.error("EXIF parsing error:", e);
-                        setIsLocating(false);
-                    }
-                });
-            }
-            // 「照片2」(post) 僅作為圖片存檔，不讀取任何 EXIF (GPS 或時間)
         };
         reader.readAsDataURL(file);
     };

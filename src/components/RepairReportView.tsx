@@ -111,22 +111,25 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
             URL.revokeObjectURL(tempUrl);
         }
 
+        // 1. 優先處理 EXIF 日期 (只有維修前照片 pre 才偵測)
+        if (type === 'pre') {
+            (EXIF as any).getData(file as any, function (this: any) {
+                const exifDate = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
+                console.log("[EXIF] Raw Date Found:", exifDate);
+                if (exifDate) {
+                    const parts = exifDate.split(" ")[0].split(":");
+                    if (parts.length === 3) {
+                        const dateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
+                        setRDate(dateStr);
+                        console.log("[EXIF] Update RDate to:", dateStr);
+                    }
+                }
+            });
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;
-
-            if (type === 'pre') {
-                // 只有維修前照片 (pre) 偵測 EXIF 日期
-                (EXIF as any).getData(file as any, function (this: any) {
-                    const exifDate = EXIF.getTag(this, "DateTimeOriginal");
-                    if (exifDate) {
-                        const parts = exifDate.split(" ")[0].split(":");
-                        if (parts.length === 3) {
-                            setRDate(`${parts[0]}-${parts[1]}-${parts[2]}`);
-                        }
-                    }
-                });
-            }
 
             setGroups(prev => prev.map(g => {
                 if (g.id === groupId) {
