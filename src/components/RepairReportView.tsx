@@ -113,18 +113,29 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
 
         // 1. 優先處理 EXIF 日期 (只有維修前照片 pre 才偵測)
         if (type === 'pre') {
-            (EXIF as any).getData(file as any, function (this: any) {
-                const exifDate = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
-                console.log("[EXIF] Raw Date Found:", exifDate);
-                if (exifDate) {
-                    const parts = exifDate.split(" ")[0].split(":");
-                    if (parts.length === 3) {
-                        const dateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
-                        setRDate(dateStr);
-                        console.log("[EXIF] Update RDate to:", dateStr);
+            const processExif = async () => {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const tags = (EXIF as any).readFromBinaryFile(buffer);
+                    if (tags) {
+                        const exifDate = tags.DateTimeOriginal || tags.DateTime;
+                        console.log("[EXIF] Found tags:", tags);
+                        if (exifDate) {
+                            const parts = exifDate.split(" ")[0].split(":");
+                            if (parts.length === 3) {
+                                const dateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
+                                setRDate(dateStr);
+                                console.log("[EXIF] Date updated to:", dateStr);
+                            }
+                        } else {
+                            console.warn("[EXIF] No date tags found in image.");
+                        }
                     }
+                } catch (err) {
+                    console.error("[EXIF] Binary read error:", err);
                 }
-            });
+            };
+            processExif();
         }
 
         const reader = new FileReader();
