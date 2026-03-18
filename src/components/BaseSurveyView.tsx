@@ -68,14 +68,14 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
 
     const preFetchLocation = () => {
         if (!("geolocation" in navigator)) return;
-        
+
         // 開始背景定位，但不鎖定 UI
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 const { latitude, longitude } = pos.coords;
                 lastKnownLoc.current = { lat: latitude, lng: longitude };
                 console.log("[GPS] Background pre-fetch success:", latitude, longitude);
-                
+
                 // 如果目前輸入框是空的，可以考慮直接幫它算一下最近路燈 (悄悄進行)
                 if (!gpsLightId && lightsDict.length > 0) {
                     findClosestLightQuietly(latitude, longitude);
