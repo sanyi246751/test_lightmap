@@ -264,7 +264,7 @@ function doPost(e) {
 }
 
 /**
- * 將 Base64 圖片存儲至 Google Drive
+ * 將 Base64 圖片存儲至 Google Drive，並回傳試算表預覽公式
  */
 function saveImageToDrive(base64Data, fileName) {
     try {
@@ -273,7 +273,10 @@ function saveImageToDrive(base64Data, fileName) {
         var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        return file.getUrl();
+        
+        var fileId = file.getId();
+        // 回傳 HYPERLINK + IMAGE 公式，讓試算表顯示縮圖
+        return '=HYPERLINK("https://drive.google.com/file/d/' + fileId + '/view", IMAGE("https://drive.google.com/uc?export=view&id=' + fileId + '"))';
     } catch (e) {
         return "Upload Error: " + e.toString();
     }

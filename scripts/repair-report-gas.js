@@ -53,6 +53,7 @@ function doPost(e) {
         sheet.getRange(row, 9).setValue(finalDate);
 
         // 2. 處理檔名用的時間碼 (yyyyMMddHHmm)
+        var now = new Date();
         var timeStr = Utilities.formatDate(now, "GMT+8", "yyyyMMddHHmm");
         var lightId = p.nameB || "未知";
 
@@ -65,16 +66,17 @@ function doPost(e) {
                 var startCol = 10 + (index * 2);
                 if (startCol >= 12) startCol += 1;
 
+                // 如果有多組，加上 _組N_；如果只有一組，就留空
                 var groupSuffix = p.photos.length > 1 ? ("_組" + (index + 1)) : "";
 
                 // 儲存維修前照片
                 if (pair.pre) {
-                    var fileNamePre = lightId + "_" + timeStr + groupSuffix + "_前";
+                    var fileNamePre = lightId + "_" + timeStr + groupSuffix + "_前.jpg";
                     saveFile(pair.pre, folder, sheet, row, startCol, fileNamePre);
                 }
                 // 儲存維修後照片
                 if (pair.post) {
-                    var fileNamePost = lightId + "_" + timeStr + groupSuffix + "_後";
+                    var fileNamePost = lightId + "_" + timeStr + groupSuffix + "_後.jpg";
                     saveFile(pair.post, folder, sheet, row, startCol + 1, fileNamePost);
                 }
             });
