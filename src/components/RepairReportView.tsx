@@ -304,9 +304,25 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
             setUploadProgress(100.0);
             setUploadText("100.0%");
             setUploadTitle("✅ 儲存成功");
+            
             setTimeout(() => {
                 alert("上傳成功！資料已寫入試算表。");
-                window.location.reload();
+                // --- 改為手動重置，不重新整理網頁 ---
+                setGroups([{ id: 1, pre: null, post: null }]);
+                setSelectedItem("");
+                setNoteSelect("");
+                setNoteText("");
+                setIsUploading(false);
+                setUploadProgress(0);
+                
+                // 重新讀取最新的待修清單 (剛剛維修的那筆會消失)
+                setIsLoading(true);
+                fetch(SCRIPT_URL)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (Array.isArray(d)) setProjectData(d);
+                    })
+                    .finally(() => setIsLoading(false));
             }, 800);
         } catch (err) {
             clearInterval(smoothIntervalRef.current);
