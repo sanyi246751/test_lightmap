@@ -39,6 +39,12 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
     const [uploadText, setUploadText] = useState("0.0%");
     const [uploadTitle, setUploadTitle] = useState("📤 正在處理資料");
 
+    const [toast, setToast] = useState<{ msg: string; show: boolean }>({ msg: "", show: false });
+    const showToast = (msg: string) => {
+        setToast({ msg, show: true });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
+
     const smoothIntervalRef = useRef<any>(null);
 
     useEffect(() => {
@@ -125,13 +131,16 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
                             if (parts.length === 3) {
                                 const dateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
                                 setRDate(dateStr);
+                                showToast(`📅 已自動填入拍照日期: ${dateStr}`);
                                 console.log("[EXIF] Date updated to:", dateStr);
                             }
                         } else {
+                            showToast("⚠️ 照片中找不到拍照日期標籤");
                             console.warn("[EXIF] No date tags found in image.");
                         }
                     }
                 } catch (err) {
+                    showToast("❌ 讀取照片標籤失敗");
                     console.error("[EXIF] Binary read error:", err);
                 }
             };
@@ -453,6 +462,27 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
                     <div className="report-progress-text">{uploadText}</div>
                 </div>
             </div>
+
+            {/* 自訂 Toast 提示 */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed', bottom: '100px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'rgba(0,0,0,0.8)', color: 'white', padding: '12px 24px',
+                    borderRadius: '50px', zIndex: 9999, fontSize: '14px', fontWeight: 'bold',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)', pointerEvents: 'none',
+                    animation: 'fadeInOut 3s forwards'
+                }}>
+                    {toast.msg}
+                </div>
+            )}
+            <style>{`
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, 20px); }
+                    15% { opacity: 1; transform: translate(-50%, 0); }
+                    85% { opacity: 1; transform: translate(-50%, 0); }
+                    100% { opacity: 0; transform: translate(-50%, -20px); }
+                }
+            `}</style>
         </div>
     );
 }
