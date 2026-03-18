@@ -200,7 +200,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             if (type === 'pre') setPrePhoto(dataUrl);
             if (type === 'post') setPostPhoto(dataUrl);
 
-            // 只有「照片1」(pre) 才進行 GPS 定對與路燈匹配
+            // 只有「照片1」(pre) 才進行調查時間校正與 GPS 路燈匹配
             if (type === 'pre') {
                 setIsLocating(true);
                 

@@ -115,29 +115,25 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;
 
+            if (type === 'pre') {
+                // 只有維修前照片 (pre) 偵測 EXIF 日期
+                (EXIF as any).getData(file as any, function (this: any) {
+                    const exifDate = EXIF.getTag(this, "DateTimeOriginal");
+                    if (exifDate) {
+                        const parts = exifDate.split(" ")[0].split(":");
+                        if (parts.length === 3) {
+                            setRDate(`${parts[0]}-${parts[1]}-${parts[2]}`);
+                        }
+                    }
+                });
+            }
+
             setGroups(prev => prev.map(g => {
                 if (g.id === groupId) {
                     return { ...g, [type]: dataUrl };
                 }
                 return g;
             }));
-
-            // 嘗試讀取 EXIF 日期
-            if (type === 'post') {
-                const img = new Image();
-                img.src = dataUrl;
-                img.onload = () => {
-                    (EXIF as any).getData(img as any, function (this: any) {
-                        const exifDate = EXIF.getTag(this, "DateTimeOriginal");
-                        if (exifDate) {
-                            const parts = exifDate.split(" ")[0].split(":");
-                            if (parts.length === 3) {
-                                setRDate(`${parts[0]}-${parts[1]}-${parts[2]}`);
-                            }
-                        }
-                    });
-                };
-            }
         };
         reader.readAsDataURL(file);
     };
