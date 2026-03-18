@@ -240,6 +240,18 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // 若為拍照模式，才要存檔在手機內備份
+        if (mode === 'camera') {
+            const tempUrl = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = tempUrl;
+            link.download = `新路燈_${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(tempUrl);
+        }
+
         setIsProcessingImage(true);
         console.log(`[Photo] Processing ${mode} file:`, file.name, file.type, file.size);
 
