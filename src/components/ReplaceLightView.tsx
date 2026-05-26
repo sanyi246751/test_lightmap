@@ -539,6 +539,13 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 setNewLightEdit({ lat: '', lng: '' });
                 setDetectedVillage(null);
                 setManualVillage('');
+                setLocationInfo(null);
+                isManualSelectionRef.current = false;
+                
+                const photoUpload = document.getElementById('photo-upload') as HTMLInputElement;
+                if (photoUpload) photoUpload.value = '';
+                const cameraCapture = document.getElementById('camera-capture') as HTMLInputElement;
+                if (cameraCapture) cameraCapture.value = '';
             }
 
             setShowConfirm(null);
