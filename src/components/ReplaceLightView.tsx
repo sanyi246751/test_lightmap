@@ -36,6 +36,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const [localLights, setLocalLights] = useState<StreetLightData[]>(lights);
     const [isRefreshingLights, setIsRefreshingLights] = useState(false);
     const locationRequestIdRef = useRef(0);
+    const isManualSelectionRef = useRef(false);
     const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit');
 
     // Detailed Geolocation Info
@@ -208,6 +209,24 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         }
     }, [villageData, locationInfo, detectedVillage, manualVillage]);
 
+    // Auto-detect village and automatically update village dropdown when manual coordinates in draft change
+    useEffect(() => {
+        if (isManualSelectionRef.current) return;
+
+        if (villageData && villageData.features) {
+            const lat = Number(newLightEdit.lat);
+            const lng = Number(newLightEdit.lng);
+            if (!isNaN(lat) && !isNaN(lng) && lat > 0 && lng > 0) {
+                const v = detectVillage(lat, lng);
+                if (v && v !== "範圍外" && v !== manualVillage) {
+                    console.log('[useEffect] Coordinate edit auto-detect matched village:', v);
+                    setDetectedVillage(v);
+                    setManualVillage(v);
+                }
+            }
+        }
+    }, [newLightEdit.lat, newLightEdit.lng, villageData, manualVillage]);
+
     useEffect(() => {
         fetchHistory();
         getDeviceLocation({ updateDraft: false });
@@ -266,6 +285,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
                 if (options?.updateDraft) {
                     console.log('[GPS] Updating draft fields with:', village);
+                    isManualSelectionRef.current = false;
                     if (village) setManualVillage(village);
                     setNewLightEdit({ lat: latitude.toFixed(5), lng: longitude.toFixed(5) });
                 }
@@ -380,6 +400,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
             if (coords && !isNaN(coords.lat) && !isNaN(coords.lng)) {
                 console.log('[Photo] GPS coordinates found in EXIF:', coords);
+                isManualSelectionRef.current = false;
                 setNewLightEdit({ lat: coords.lat.toFixed(5), lng: coords.lng.toFixed(5) });
                 const village = detectVillage(coords.lat, coords.lng);
                 setDetectedVillage(village);
@@ -802,7 +823,10 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                 <div className="relative">
                                                     <select
                                                         value={manualVillage || ''}
-                                                        onChange={(e) => setManualVillage(e.target.value)}
+                                                        onChange={(e) => {
+                                                            isManualSelectionRef.current = true;
+                                                            setManualVillage(e.target.value);
+                                                        }}
                                                         className="w-full pl-4 pr-10 py-3.5 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none appearance-none shadow-sm transition-all"
                                                     >
                                                         <option value="" disabled>請選擇...</option>
