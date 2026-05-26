@@ -32,6 +32,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
 
     const smoothIntervalRef = useRef<any>(null);
     const lastKnownLoc = useRef<{ lat: number; lng: number } | null>(null);
+    const gpsRequestIdRef = useRef(0);
 
     const [toast, setToast] = useState<{ msg: string; show: boolean }>({ msg: "", show: false });
     const showToast = (msg: string) => {
@@ -168,13 +169,19 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
     const handleManualGPS = () => {
         if ("geolocation" in navigator) {
             setIsLocating(true);
+            const reqId = ++gpsRequestIdRef.current;
             navigator.geolocation.getCurrentPosition((pos) => {
+                if (reqId !== gpsRequestIdRef.current) {
+                    console.log("[GPS] Discarding outdated request:", reqId);
+                    return;
+                }
                 findClosestLight(pos.coords.latitude, pos.coords.longitude);
                 setTimeout(() => alert("已成功更新GPS並尋找最近路燈！"), 100);
             }, (err) => {
+                if (reqId !== gpsRequestIdRef.current) return;
                 setIsLocating(false);
                 setTimeout(() => alert("無法取得位置，請確認是否允許網頁存取 GPS。"), 100);
-            }, { enableHighAccuracy: true, timeout: 5000 });
+            }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
         } else {
             alert("您的瀏覽器不支援定位功能。");
         }
@@ -271,6 +278,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
 
         if (type === 'pre') {
             setIsLocating(true);
+            const reqId = ++gpsRequestIdRef.current;
             try {
                 const buffer = await file.arrayBuffer();
                 const data = extractEXIFManual(buffer);
@@ -282,31 +290,25 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                     }
                     // 2. 更新座標與搜尋最近路燈
                     if (data.lat && data.lng) {
-                        setGpsLat(data.lat);
-                        setGpsLng(data.lng);
-                        showToast("📍 成功讀取照片 GPS 座標");
-                        findClosestLight(data.lat, data.lng);
+                        if (reqId === gpsRequestIdRef.current) {
+                            setGpsLat(data.lat);
+                            setGpsLng(data.lng);
+                            showToast("📍 成功讀取照片 GPS 座標");
+                            findClosestLight(data.lat, data.lng);
+                        }
                         // 注意：這裡不 return，要讓後面的 reader 跑完顯示照片
                     } else {
-                        showToast("⚠️ 照片中無座標，嘗試手機定位...");
-                        // 照片無座標才啟動備援定位
-                        if (lastKnownLoc.current) {
-                            showToast("📡 採用背景預抓 GPS");
-                            findClosestLight(lastKnownLoc.current.lat, lastKnownLoc.current.lng);
-                        } else if ("geolocation" in navigator) {
-                            navigator.geolocation.getCurrentPosition(
-                                (pos) => { showToast("✅ 定位完成"); findClosestLight(pos.coords.latitude, pos.coords.longitude); },
-                                () => { showToast("⚠️ 定位失敗"); setIsLocating(false); },
-                                { enableHighAccuracy: true, timeout: 5000 }
-                            );
-                        } else {
+                        showToast("⚠️ 相片中沒有 GPS 座標資訊");
+                        if (reqId === gpsRequestIdRef.current) {
                             setIsLocating(false);
                         }
                     }
                 }
             } catch (err) {
                 console.error("Manual EXIF Error", err);
-                setIsLocating(false);
+                if (reqId === gpsRequestIdRef.current) {
+                    setIsLocating(false);
+                }
             }
         }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, Save, Undo2, Trash2, Camera, ExternalLink, X, Check, Cloud, Image as ImageIcon, Smile, Sun, CheckCircle2, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StreetLightData } from '../types';
@@ -31,6 +31,7 @@ const VILLAGE_CODES: Record<string, string> = {
 export default function ReplaceLightView({ lights, villageData, onBack }: ReplaceLightViewProps) {
     const [loading, setLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const locationRequestIdRef = useRef(0);
     const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit');
 
     // Detailed Geolocation Info
@@ -171,6 +172,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
     const getDeviceLocation = (options?: { updateDraft?: boolean, callback?: (lat: number, lng: number) => void }) => {
         setLoading(true);
+        const reqId = ++locationRequestIdRef.current;
         if (!navigator.geolocation) {
             alert("哎呀！瀏覽器似乎不支援定位唷 😅");
             setLoading(false);
@@ -178,6 +180,11 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         }
         navigator.geolocation.getCurrentPosition(
             (position) => {
+                if (reqId !== locationRequestIdRef.current) {
+                    console.log("[GPS] Discarding outdated request:", reqId);
+                    return;
+                }
+
                 const { latitude, longitude } = position.coords;
                 if (isNaN(latitude) || isNaN(longitude)) {
                     console.error("[GPS] Received NaN coords:", latitude, longitude);
@@ -211,11 +218,12 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 setLoading(false);
             },
             (error) => {
+                if (reqId !== locationRequestIdRef.current) return;
                 console.error("Geolocation error:", error);
                 alert("找不到位置！請確認 GPS 已經打開啦 🗺️");
                 setLoading(false);
             },
-            { enableHighAccuracy: true }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
     };
 
