@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, MapPin, Search, CheckCircle, Crosshair, RefreshCw, History, Save, Undo2, Trash2, Camera, ExternalLink, X, Check, Cloud, Image as ImageIcon, Smile, Sun, CheckCircle2, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+// @ts-ignore
+import * as EXIF from 'exif-js';
 import { StreetLightData } from '../types';
 import { GAS_WEB_APP_URL } from '../constants';
 
@@ -244,6 +246,48 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         }
     };
 
+    const extractGPSFromLibrary = (file: File): Promise<{ lat: number, lng: number } | null> => {
+        return new Promise((resolve) => {
+            try {
+                // @ts-ignore
+                EXIF.getData(file, function (this: any) {
+                    // @ts-ignore
+                    const lat = EXIF.getTag(this, "GPSLatitude");
+                    // @ts-ignore
+                    const lng = EXIF.getTag(this, "GPSLongitude");
+                    // @ts-ignore
+                    const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
+                    // @ts-ignore
+                    const lngRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
+
+                    if (lat && lng) {
+                        const getVal = (x: any) => {
+                            if (x === null || x === undefined) return 0;
+                            if (typeof x === 'object' && typeof x.numerator !== 'undefined') {
+                                return x.denominator === 0 ? 0 : x.numerator / x.denominator;
+                            }
+                            return Number(x);
+                        };
+                        const dLat = getVal(lat[0]) + getVal(lat[1]) / 60 + getVal(lat[2]) / 3600;
+                        const dLng = getVal(lng[0]) + getVal(lng[1]) / 60 + getVal(lng[2]) / 3600;
+
+                        const finalLat = latRef === "S" ? -dLat : dLat;
+                        const finalLng = lngRef === "W" ? -dLng : dLng;
+
+                        if (!isNaN(finalLat) && !isNaN(finalLng)) {
+                            resolve({ lat: finalLat, lng: finalLng });
+                            return;
+                        }
+                    }
+                    resolve(null);
+                });
+            } catch (err) {
+                console.error("EXIF library parsing error:", err);
+                resolve(null);
+            }
+        });
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, mode: 'camera' | 'file') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -271,8 +315,14 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             });
             setSelectedImage(base64);
 
-            const arrayBuffer = await file.arrayBuffer();
-            const coords = extractGPSSimplified(arrayBuffer);
+            // 優先使用業界標準 exif-js 進行解析
+            let coords = await extractGPSFromLibrary(file);
+
+            if (!coords) {
+                console.warn('[Photo] exif-js found no GPS data, falling back to manual binary parsing...');
+                const arrayBuffer = await file.arrayBuffer();
+                coords = extractGPSSimplified(arrayBuffer);
+            }
 
             if (coords && !isNaN(coords.lat) && !isNaN(coords.lng)) {
                 console.log('[Photo] GPS coordinates found in EXIF:', coords);

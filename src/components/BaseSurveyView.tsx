@@ -260,6 +260,61 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
         return res;
     };
 
+    const extractEXIFFromLibrary = (file: File): Promise<{ date?: string, lat?: number, lng?: number } | null> => {
+        return new Promise((resolve) => {
+            try {
+                // @ts-ignore
+                EXIF.getData(file, function (this: any) {
+                    // @ts-ignore
+                    const lat = EXIF.getTag(this, "GPSLatitude");
+                    // @ts-ignore
+                    const lng = EXIF.getTag(this, "GPSLongitude");
+                    // @ts-ignore
+                    const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
+                    // @ts-ignore
+                    const lngRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
+                    // @ts-ignore
+                    const dateRaw = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
+
+                    let date: string | undefined = undefined;
+                    if (dateRaw && typeof dateRaw === 'string') {
+                        const p = dateRaw.trim().split(" ");
+                        if (p.length === 2) {
+                            date = p[0].replace(/:/g, "-") + "T" + p[1].substring(0, 5);
+                        }
+                    }
+
+                    let finalLat: number | undefined = undefined;
+                    let finalLng: number | undefined = undefined;
+
+                    if (lat && lng) {
+                        const getVal = (x: any) => {
+                            if (x === null || x === undefined) return 0;
+                            if (typeof x === 'object' && typeof x.numerator !== 'undefined') {
+                                return x.denominator === 0 ? 0 : x.numerator / x.denominator;
+                            }
+                            return Number(x);
+                        };
+                        const dLat = getVal(lat[0]) + getVal(lat[1]) / 60 + getVal(lat[2]) / 3600;
+                        const dLng = getVal(lng[0]) + getVal(lng[1]) / 60 + getVal(lng[2]) / 3600;
+
+                        finalLat = latRef === "S" ? -dLat : dLat;
+                        finalLng = lngRef === "W" ? -dLng : dLng;
+                    }
+
+                    if (date || (finalLat && finalLng)) {
+                        resolve({ date, lat: finalLat, lng: finalLng });
+                    } else {
+                        resolve(null);
+                    }
+                });
+            } catch (err) {
+                console.error("EXIF library parsing error:", err);
+                resolve(null);
+            }
+        });
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'pre' | 'post') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -280,8 +335,16 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             setIsLocating(true);
             const reqId = ++gpsRequestIdRef.current;
             try {
-                const buffer = await file.arrayBuffer();
-                const data = extractEXIFManual(buffer);
+                // 1. 優先使用 exif-js 標準庫解析
+                let data = await extractEXIFFromLibrary(file);
+
+                // 2. 若標準庫沒解析出來，則 fallback 到手寫二進位解析引擎
+                if (!data) {
+                    console.warn("[GPS] exif-js found no data, falling back to manual binary parser...");
+                    const buffer = await file.arrayBuffer();
+                    data = extractEXIFManual(buffer);
+                }
+
                 if (data) {
                     // 1. 更新時間 (datetime-local 格式需為 YYYY-MM-DDTHH:mm)
                     if (data.date) {
