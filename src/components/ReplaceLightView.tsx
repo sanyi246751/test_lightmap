@@ -200,7 +200,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         return () => {
             isCurrent = false;
         };
-    }, [manualVillage]);
+    }, [manualVillage, localLights]);
 
     // Auto-detect village when villageData arrives or location changes
     useEffect(() => {
@@ -546,18 +546,18 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             if (payload.action === 'new') {
                 // Construct and append the newly added light to our local memory cache immediately
                 const newLightRecord: StreetLightData = {
-                    id: newLightId,
-                    lat: Number(newLightEdit.lat),
-                    lng: Number(newLightEdit.lng),
+                    id: id,
+                    lat: Number(lat),
+                    lng: Number(lng),
                     isUnrepaired: false,
                     fault: '',
-                    "原路燈號碼": newLightId,
-                    "緯度Latitude": newLightEdit.lat,
-                    "經度Longitude": newLightEdit.lng
+                    "原路燈號碼": id,
+                    "緯度Latitude": lat,
+                    "經度Longitude": lng
                 };
                 localAddedLightsRef.current.push(newLightRecord);
                 setLocalLights(prev => {
-                    if (prev.some(l => l.id === newLightId)) return prev;
+                    if (prev.some(l => l.id === id)) return prev;
                     return [...prev, newLightRecord];
                 });
 
