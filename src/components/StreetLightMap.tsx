@@ -204,8 +204,8 @@ export default function StreetLightMap({
           .filter(Boolean) as StreetLightData[];
 
         setLights(processedLights);
-        // Load data and set view to default center
-        setTargetLocation([DEFAULT_CENTER[0], DEFAULT_CENTER[1]]);
+        // 初始不設定單一點目標，改由 fitBounds 框選所有路燈範圍
+        setTargetLocation(null);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
