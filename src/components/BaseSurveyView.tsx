@@ -331,50 +331,7 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             URL.revokeObjectURL(tempUrl);
         }
 
-        if (type === 'pre') {
-            setIsLocating(true);
-            const reqId = ++gpsRequestIdRef.current;
-            try {
-                // 1. 優先使用 exif-js 標準庫解析
-                let data = await extractEXIFFromLibrary(file);
-
-                // 2. 若標準庫沒解析出來，則 fallback 到手寫二進位解析引擎
-                if (!data) {
-                    console.warn("[GPS] exif-js found no data, falling back to manual binary parser...");
-                    const buffer = await file.arrayBuffer();
-                    data = extractEXIFManual(buffer);
-                }
-
-                if (data) {
-                    // 1. 更新時間 (datetime-local 格式需為 YYYY-MM-DDTHH:mm)
-                    if (data.date) {
-                        setRDate(data.date);
-                        showToast(`📅 自動校對拍照時間: ${data.date.replace("T", " ")}`);
-                    }
-                    // 2. 更新座標與搜尋最近路燈
-                    if (data.lat && data.lng) {
-                        if (reqId === gpsRequestIdRef.current) {
-                            setGpsLat(data.lat);
-                            setGpsLng(data.lng);
-                            showToast("📍 成功讀取照片 GPS 座標");
-                            findClosestLight(data.lat, data.lng);
-                        }
-                        // 注意：這裡不 return，要讓後面的 reader 跑完顯示照片
-                    } else {
-                        showToast("⚠️ 相片中沒有 GPS 座標資訊");
-                        if (reqId === gpsRequestIdRef.current) {
-                            setIsLocating(false);
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Manual EXIF Error", err);
-                if (reqId === gpsRequestIdRef.current) {
-                    setIsLocating(false);
-                }
-            }
-        }
-
+        // 🚀 1. 立即、非阻塞地載入照片預覽，確保 UI 體驗流暢！
         const reader = new FileReader();
         reader.onload = (event) => {
             const dataUrl = event.target?.result as string;
@@ -382,6 +339,55 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
             if (type === 'post') setPostPhoto(dataUrl);
         };
         reader.readAsDataURL(file);
+
+        // 🚀 2. 非同步、安全地在背景解析 GPS EXIF 資訊，絕不卡死照片載入！
+        if (type === 'pre') {
+            setIsLocating(true);
+            const reqId = ++gpsRequestIdRef.current;
+            try {
+                // 優先使用 exif-js 標準庫解析
+                let data = await extractEXIFFromLibrary(file);
+
+                // 若標準庫沒解析出來，則 fallback 到手寫二進位解析引擎
+                if (!data) {
+                    console.warn("[GPS] exif-js found no data, falling back to manual binary parser...");
+                    const buffer = await file.arrayBuffer();
+                    data = extractEXIFManual(buffer);
+                }
+
+                if (data) {
+                    // 更新時間 (datetime-local 格式需為 YYYY-MM-DDTHH:mm)
+                    if (data.date) {
+                        setRDate(data.date);
+                        showToast(`📅 自動校對拍照時間: ${data.date.replace("T", " ")}`);
+                    }
+                    // 更新座標與搜尋最近路燈
+                    if (data.lat && data.lng) {
+                        if (reqId === gpsRequestIdRef.current) {
+                            setGpsLat(data.lat);
+                            setGpsLng(data.lng);
+                            showToast("📍 成功讀取照片 GPS 座標");
+                            findClosestLight(data.lat, data.lng);
+                        }
+                    } else {
+                        showToast("⚠️ 相片中沒有 GPS 座標資訊");
+                        if (reqId === gpsRequestIdRef.current) {
+                            setIsLocating(false);
+                        }
+                    }
+                } else {
+                    showToast("⚠️ 相片中沒有 GPS 座標資訊");
+                    if (reqId === gpsRequestIdRef.current) {
+                        setIsLocating(false);
+                    }
+                }
+            } catch (err) {
+                console.error("EXIF Parsing Error:", err);
+                if (reqId === gpsRequestIdRef.current) {
+                    setIsLocating(false);
+                }
+            }
+        }
     };
 
     const startSmoothClimb = (startP: number, maxP: number, speed: number) => {
@@ -457,6 +463,21 @@ export default function BaseSurveyView({ onBack }: BaseSurveyViewProps) {
                 setPrePhoto(null);
                 setPostPhoto(null);
                 setGpsLightId("");
+                setGpsLat(null);
+                setGpsLng(null);
+
+                // 重新校正時間為當前最新時間
+                const now = new Date();
+                const offset = now.getTimezoneOffset() * 60000;
+                const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16);
+                setRDate(localISOTime);
+
+                // 清空 HTML 檔案輸入框快取
+                const fPre = document.getElementById('f-pre') as HTMLInputElement;
+                if (fPre) fPre.value = '';
+                const fPost = document.getElementById('f-post') as HTMLInputElement;
+                if (fPost) fPost.value = '';
+
                 setIsUploading(false);
             }, 800);
         } catch (err) {
