@@ -37,6 +37,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     const [isRefreshingLights, setIsRefreshingLights] = useState(false);
     const locationRequestIdRef = useRef(0);
     const isManualSelectionRef = useRef(false);
+    const localAddedLightsRef = useRef<StreetLightData[]>([]);
     const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit');
 
     // Detailed Geolocation Info
@@ -145,9 +146,17 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                 })
                 .filter(Boolean) as StreetLightData[];
 
-            setLocalLights(processedLights);
-            console.log("[ReplaceLightView] Successfully synced lights from database. Count:", processedLights.length);
-            return processedLights;
+            // Merge with locally added lights to prevent OpenSheet vercel proxy caching issues
+            const mergedLights = [...processedLights];
+            for (const localLight of localAddedLightsRef.current) {
+                if (!mergedLights.some(l => l.id === localLight.id)) {
+                    mergedLights.push(localLight);
+                }
+            }
+
+            setLocalLights(mergedLights);
+            console.log("[ReplaceLightView] Successfully synced lights from database (merged). Count:", mergedLights.length);
+            return mergedLights;
         } catch (error) {
             console.error("[ReplaceLightView] Error refreshing streetlights database:", error);
             return null;
@@ -535,6 +544,23 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             setSearchEdit({ lat: '', lng: '' });
 
             if (payload.action === 'new') {
+                // Construct and append the newly added light to our local memory cache immediately
+                const newLightRecord: StreetLightData = {
+                    id: newLightId,
+                    lat: Number(newLightEdit.lat),
+                    lng: Number(newLightEdit.lng),
+                    isUnrepaired: false,
+                    fault: '',
+                    "原路燈號碼": newLightId,
+                    "緯度Latitude": newLightEdit.lat,
+                    "經度Longitude": newLightEdit.lng
+                };
+                localAddedLightsRef.current.push(newLightRecord);
+                setLocalLights(prev => {
+                    if (prev.some(l => l.id === newLightId)) return prev;
+                    return [...prev, newLightRecord];
+                });
+
                 setNewLightId('');
                 setNewLightEdit({ lat: '', lng: '' });
                 setDetectedVillage(null);
