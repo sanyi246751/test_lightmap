@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // @ts-ignore
 import * as EXIF from 'exif-js';
 import { StreetLightData } from '../types';
-import { GAS_WEB_APP_URL } from '../constants';
+import { GAS_WEB_APP_URL, SHEET_URL } from '../constants';
 
 const formatCoord = (val: string | number) => {
     if (!val) return "";
@@ -33,6 +33,8 @@ const VILLAGE_CODES: Record<string, string> = {
 export default function ReplaceLightView({ lights, villageData, onBack }: ReplaceLightViewProps) {
     const [loading, setLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [localLights, setLocalLights] = useState<StreetLightData[]>(lights);
+    const [isRefreshingLights, setIsRefreshingLights] = useState(false);
     const locationRequestIdRef = useRef(0);
     const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit');
 
@@ -114,10 +116,49 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         return "範圍外";
     };
 
-    const getNextId = (vName: string) => {
+    const refreshLights = async (): Promise<StreetLightData[] | null> => {
+        if (!SHEET_URL) return null;
+        setIsRefreshingLights(true);
+        try {
+            console.log("[ReplaceLightView] Fetching latest streetlights database from SHEET_URL...");
+            const res = await fetch(`${SHEET_URL}?t=${Date.now()}`);
+            const locationRes = await res.json();
+
+            const processedLights: StreetLightData[] = locationRes
+                .map((row: any) => {
+                    const id = row["原路燈號碼"]?.trim();
+                    const lat = parseFloat(row["緯度Latitude"]);
+                    const lng = parseFloat(row["經度Longitude"]);
+
+                    if (!id || isNaN(lat) || isNaN(lng)) return null;
+
+                    return {
+                        ...row,
+                        id,
+                        lat,
+                        lng,
+                        isUnrepaired: false,
+                        fault: "",
+                        reportDate: undefined
+                    };
+                })
+                .filter(Boolean) as StreetLightData[];
+
+            setLocalLights(processedLights);
+            console.log("[ReplaceLightView] Successfully synced lights from database. Count:", processedLights.length);
+            return processedLights;
+        } catch (error) {
+            console.error("[ReplaceLightView] Error refreshing streetlights database:", error);
+            return null;
+        } finally {
+            setIsRefreshingLights(false);
+        }
+    };
+
+    const getNextId = (vName: string, lightsList: StreetLightData[] = localLights) => {
         const vCode = VILLAGE_CODES[vName];
         if (!vCode) return '';
-        const villageLights = lights.filter(l => l.id.startsWith(vCode));
+        const villageLights = lightsList.filter(l => l.id.startsWith(vCode));
         if (villageLights.length === 0) return `${vCode}001`;
 
         const nums = villageLights.map(l => {
@@ -130,13 +171,26 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
     };
 
     useEffect(() => {
+        let isCurrent = true;
         if (manualVillage) {
-            const next = getNextId(manualVillage);
+            // 1. 立即利用當前 localLights 進行計算，保證 UI 流暢
+            const next = getNextId(manualVillage, localLights);
             setNewLightId(next);
+
+            // 2. 背景非同步向資料庫讀取最新路燈號碼並重新校對
+            refreshLights().then((freshLights) => {
+                if (isCurrent && freshLights) {
+                    const nextFresh = getNextId(manualVillage, freshLights);
+                    setNewLightId(nextFresh);
+                }
+            });
         } else {
             setNewLightId('');
         }
-    }, [manualVillage, lights]);
+        return () => {
+            isCurrent = false;
+        };
+    }, [manualVillage]);
 
     // Auto-detect village when villageData arrives or location changes
     useEffect(() => {
@@ -235,7 +289,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         // Simulate a tiny delay for better UX flow
         await new Promise(r => setTimeout(r, 600));
 
-        const light = lights.find(l => l.id === searchId.trim());
+        const light = localLights.find(l => l.id === searchId.trim());
         setIsSearching(false);
         if (light) {
             setFoundLight(light);
@@ -431,7 +485,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
         }
 
         setIsSaving(true);
-        const currentLight = lights.find(l => l.id === id);
+        const currentLight = localLights.find(l => l.id === id);
         const payload = {
             id,
             lat,
@@ -470,6 +524,7 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
             setToast({ message: "太棒了！存檔完成囉 🌟", type: 'success' });
             setTimeout(() => setToast(null), 3000);
             fetchHistory();
+            refreshLights(); // 同步向資料庫拉取最新路燈資料
         } catch (error) {
             console.error("Save error:", error);
             setToast({ message: "糟糕！網路怪怪的，存檔失敗了 😿", type: 'error' });
@@ -759,7 +814,12 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
                                                 </div>
                                             </div>
                                             <div className="flex-1 space-y-1.5">
-                                                <label className="text-xs font-extrabold text-slate-400 ml-2">路燈編號</label>
+                                                <label className="text-xs font-extrabold text-slate-400 ml-2 flex items-center gap-1.5">
+                                                    路燈編號
+                                                    {isRefreshingLights && (
+                                                        <RefreshCw className="w-3.5 h-3.5 text-[#FF8C69] animate-spin" />
+                                                    )}
+                                                </label>
                                                 <input
                                                     type="text"
                                                     className="w-full px-4 py-3.5 bg-white border-2 border-slate-100 focus:border-[#FF8C69] rounded-2xl text-[15px] font-bold text-slate-700 outline-none shadow-sm transition-all placeholder:text-slate-300 placeholder:font-medium"
