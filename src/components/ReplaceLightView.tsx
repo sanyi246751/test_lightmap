@@ -331,79 +331,180 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
     const extractGPSFromLibrary = (file: File): Promise<{ lat: number, lng: number } | null> => {
         return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                console.warn("[Photo] EXIF library parsing timed out.");
+                resolve(null);
+            }, 3000); // 3 seconds timeout to prevent hanging
+
             try {
                 // @ts-ignore
                 EXIF.getData(file, function (this: any) {
-                    // @ts-ignore
-                    const lat = EXIF.getTag(this, "GPSLatitude");
-                    // @ts-ignore
-                    const lng = EXIF.getTag(this, "GPSLongitude");
-                    // @ts-ignore
-                    const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
-                    // @ts-ignore
-                    const lngRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
+                    clearTimeout(timeout);
+                    try {
+                        // @ts-ignore
+                        const lat = EXIF.getTag(this, "GPSLatitude");
+                        // @ts-ignore
+                        const lng = EXIF.getTag(this, "GPSLongitude");
+                        // @ts-ignore
+                        const latRef = EXIF.getTag(this, "GPSLatitudeRef") || "N";
+                        // @ts-ignore
+                        const lngRef = EXIF.getTag(this, "GPSLongitudeRef") || "E";
 
-                    if (lat && lng) {
-                        const getVal = (x: any) => {
-                            if (x === null || x === undefined) return 0;
-                            if (typeof x === 'object' && typeof x.numerator !== 'undefined') {
-                                return x.denominator === 0 ? 0 : x.numerator / x.denominator;
+                        if (lat && lng) {
+                            const getVal = (x: any) => {
+                                if (x === null || x === undefined) return 0;
+                                if (typeof x === 'object' && typeof x.numerator !== 'undefined') {
+                                    return x.denominator === 0 ? 0 : x.numerator / x.denominator;
+                                }
+                                return Number(x);
+                            };
+                            const dLat = getVal(lat[0]) + getVal(lat[1]) / 60 + getVal(lat[2]) / 3600;
+                            const dLng = getVal(lng[0]) + getVal(lng[1]) / 60 + getVal(lng[2]) / 3600;
+
+                            const finalLat = latRef === "S" ? -dLat : dLat;
+                            const finalLng = lngRef === "W" ? -dLng : dLng;
+
+                            if (!isNaN(finalLat) && !isNaN(finalLng)) {
+                                resolve({ lat: finalLat, lng: finalLng });
+                                return;
                             }
-                            return Number(x);
-                        };
-                        const dLat = getVal(lat[0]) + getVal(lat[1]) / 60 + getVal(lat[2]) / 3600;
-                        const dLng = getVal(lng[0]) + getVal(lng[1]) / 60 + getVal(lng[2]) / 3600;
-
-                        const finalLat = latRef === "S" ? -dLat : dLat;
-                        const finalLng = lngRef === "W" ? -dLng : dLng;
-
-                        if (!isNaN(finalLat) && !isNaN(finalLng)) {
-                            resolve({ lat: finalLat, lng: finalLng });
-                            return;
                         }
+                        resolve(null);
+                    } catch (innerErr) {
+                        console.error("EXIF tag parsing error:", innerErr);
+                        resolve(null);
                     }
-                    resolve(null);
                 });
             } catch (err) {
+                clearTimeout(timeout);
                 console.error("EXIF library parsing error:", err);
                 resolve(null);
             }
         });
     };
 
+    const compressImage = (base64Str: string): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const maxDim = 1024; // Resize long edge to 1024px
+
+                if (width > height) {
+                    if (width > maxDim) {
+                        height = Math.round(height * (maxDim / width));
+                        width = maxDim;
+                    }
+                } else {
+                    if (height > maxDim) {
+                        width = Math.round(width * (maxDim / height));
+                        height = maxDim;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7)); // compress to 70% quality JPEG
+                } else {
+                    resolve(base64Str);
+                }
+            };
+            img.onerror = () => {
+                resolve(base64Str);
+            };
+        });
+    };
+
+    const injectExif = (originalBuffer: ArrayBuffer, compressedBase64: string): string => {
+        try {
+            const dv = new DataView(originalBuffer);
+            if (dv.getUint16(0) !== 0xFFD8) return compressedBase64;
+
+            let offset = 2;
+            let app1Segment: ArrayBuffer | null = null;
+            while (offset < dv.byteLength) {
+                if (offset + 4 > dv.byteLength) break;
+                const marker = dv.getUint16(offset);
+                const length = dv.getUint16(offset + 2);
+                if (marker === 0xFFE1) {
+                    app1Segment = originalBuffer.slice(offset, offset + 2 + length);
+                    break;
+                }
+                if ((marker & 0xFF00) !== 0xFF) break;
+                offset += 2 + length;
+            }
+
+            if (!app1Segment) return compressedBase64;
+
+            const rawBin = atob(compressedBase64.split(',')[1]);
+            const compressedBytes = new Uint8Array(rawBin.length);
+            for (let i = 0; i < rawBin.length; i++) {
+                compressedBytes[i] = rawBin.charCodeAt(i);
+            }
+
+            if (compressedBytes[0] !== 0xFF || compressedBytes[1] !== 0xD8) {
+                return compressedBase64;
+            }
+
+            const app1Bytes = new Uint8Array(app1Segment);
+            const newBytes = new Uint8Array(2 + app1Bytes.length + (compressedBytes.length - 2));
+
+            newBytes[0] = 0xFF;
+            newBytes[1] = 0xD8;
+            newBytes.set(app1Bytes, 2);
+            newBytes.set(compressedBytes.subarray(2), 2 + app1Bytes.length);
+
+            let binary = '';
+            const len = newBytes.length;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(newBytes[i]);
+            }
+            return `data:image/jpeg;base64,${btoa(binary)}`;
+        } catch (err) {
+            console.error("[Photo] Failed to inject EXIF into compressed image:", err);
+            return compressedBase64;
+        }
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, mode: 'camera' | 'file') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 若為拍照模式，才要存檔在手機內備份
-        if (mode === 'camera') {
-            const tempUrl = URL.createObjectURL(file);
-            const link = document.createElement('a');
-            link.href = tempUrl;
-            link.download = `新路燈_${Date.now()}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(tempUrl);
-        }
+        // 手機拍照時，系統相機已自動將照片存入相簿。
+        // 在 LINE 或部分 WebView 內使用 link.click() 下載 Blob 會被安全性原則阻擋導致網頁卡死或重新整理，故移除該下載邏輯以避免崩潰。
 
         setIsProcessingImage(true);
         console.log(`[Photo] Processing ${mode} file:`, file.name, file.type, file.size);
 
         try {
-            const base64 = await new Promise<string>((resolve) => {
+            const rawBase64 = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = (err) => reject(err);
                 reader.readAsDataURL(file);
             });
-            setSelectedImage(base64);
 
-            // 優先使用業界標準 exif-js 進行解析
+            // 先進行圖片壓縮，避免超大圖 base64 造成手機瀏覽器記憶體崩潰
+            const compressedBase64 = await compressImage(rawBase64);
+
+            // 讀取原始檔案的 arrayBuffer
+            const arrayBuffer = await file.arrayBuffer();
+
+            // 將原始照片的 EXIF 資訊注入壓縮後的 JPEG 中，確保上傳時仍包含 GPS
+            const finalBase64 = injectExif(arrayBuffer, compressedBase64);
+            setSelectedImage(finalBase64);
+
+            // 優先使用業界標準 exif-js 進行解析（對應原始 file）
             let coords = await extractGPSFromLibrary(file);
 
             if (!coords) {
                 console.warn('[Photo] exif-js found no GPS data, falling back to manual binary parsing...');
-                const arrayBuffer = await file.arrayBuffer();
                 coords = extractGPSSimplified(arrayBuffer);
             }
 
@@ -442,10 +543,13 @@ export default function ReplaceLightView({ lights, villageData, onBack }: Replac
 
         let offset = 2;
         while (offset < dv.byteLength) {
-            if (dv.getUint16(offset) === 0xFFE1) {
+            if (offset + 2 > dv.byteLength) break;
+            const marker = dv.getUint16(offset);
+            if (marker === 0xFFE1) {
                 const exifData = parseExif(dv, offset + 4);
                 return exifData;
             }
+            if ((marker & 0xFF00) !== 0xFF) break; // If not a valid marker, break to prevent infinite loop
             offset += 2 + dv.getUint16(offset + 2);
         }
         return null;

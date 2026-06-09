@@ -142,17 +142,8 @@ export default function RepairReportView({ onBack }: RepairReportViewProps) {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const isCamera = e.target.hasAttribute("capture");
-        if (isCamera) {
-            const tempUrl = URL.createObjectURL(file);
-            const link = document.createElement('a');
-            link.href = tempUrl;
-            link.download = `${type === 'pre' ? '維修前' : '維修後'}_${Date.now()}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(tempUrl);
-        }
+        // 手機拍照時，系統相機已自動將照片存入相簿。
+        // 在 LINE 或部分 WebView 內使用 link.click() 下載 Blob 會被安全性原則阻擋導致網頁卡死或重新整理，故移除該下載邏輯以避免崩潰。
 
         if (type === 'pre') {
             try {
