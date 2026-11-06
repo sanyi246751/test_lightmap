@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, LayersControl,
 import L from 'leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { StreetLightData, StreetLightLocation, RepairRecord } from '../types';
-import { SHEET_URL, CHECK_SHEET_URL, DEFAULT_CENTER, DEFAULT_ZOOM, VILLAGE_GEOJSON_URL } from '../constants';
+import { STREETLIGHT_GVIZ_URL, REPAIR_GVIZ_URL, DEFAULT_CENTER, DEFAULT_ZOOM, VILLAGE_GEOJSON_URL } from '../constants';
 import { Search, AlertTriangle, Lightbulb, ExternalLink, X, Navigation, Settings, MapPin, ClipboardCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -43,6 +43,94 @@ const goldIcon = new L.Icon({
   iconAnchor: [16, 53],
   popupAnchor: [1, -44],
   shadowSize: [53, 53]
+});
+
+/**
+ * Spreadsheet cells often contain invisible spaces or full-width characters.
+ * Use one representation for joins and searches, while keeping the original
+ * value for display.
+ */
+const normalizeText = (value: unknown) => String(value ?? '')
+  .normalize('NFKC')
+  .replace(/[\s\u00A0\u200B-\u200D\uFEFF]/g, '')
+  .trim();
+
+const normalizeLampId = (value: unknown) => {
+  const id = normalizeText(value).toUpperCase();
+  // Google Sheets can coerce a numeric lamp number such as 01001 into 1001.
+  // Treat leading zeroes in all-numeric identifiers as formatting, not identity.
+  return /^\d+$/.test(id) ? id.replace(/^0+(?=\d)/, '') : id;
+};
+
+const readSheetValue = (row: Record<string, unknown>, fieldNames: string[]) => {
+  const entries = Object.entries(row);
+  for (const fieldName of fieldNames) {
+    const match = entries.find(([key]) => normalizeText(key) === normalizeText(fieldName));
+    if (match && match[1] !== undefined && match[1] !== null) return String(match[1]);
+  }
+  return '';
+};
+
+const isUnrepairedStatus = (status: unknown) => {
+  const value = normalizeText(status);
+  return value === '未查修' || value === '待查修' || value === '待修' || value === '未修復';
+};
+
+type GoogleVisualizationCell = { v?: unknown; f?: string | null } | null;
+type GoogleVisualizationResponse = {
+  table?: { rows?: Array<{ c?: GoogleVisualizationCell[] }> };
+};
+
+const getGoogleCellValue = (cell: GoogleVisualizationCell) => String(cell?.f ?? cell?.v ?? '');
+
+const toSheetRows = (data: GoogleVisualizationResponse, fallbackHeaders?: string[]): Record<string, string>[] => {
+  const rows = data.table?.rows;
+  if (!rows?.length) return [];
+
+  const firstRow = (rows[0].c || []).map(getGoogleCellValue).map(value => value.trim());
+  const hasHeaderRow = firstRow.some(header =>
+    normalizeText(header) === normalizeText('路燈編號') ||
+    normalizeText(header) === normalizeText('原路燈號碼')
+  );
+  const headers = hasHeaderRow ? firstRow : fallbackHeaders;
+  if (!headers?.some(Boolean)) throw new Error('試算表缺少欄位名稱');
+
+  return (hasHeaderRow ? rows.slice(1) : rows).map(({ c = [] }) => Object.fromEntries(
+    headers.map((header, index) => [header, getGoogleCellValue(c[index])])
+  ));
+};
+
+/**
+ * Google Sheets' visualization endpoint does not send CORS headers. JSONP is
+ * its supported browser-compatible response mode for a public spreadsheet.
+ */
+const fetchSheetRows = (url: string, fallbackHeaders?: string[]): Promise<Record<string, string>[]> => new Promise((resolve, reject) => {
+  const callbackName = `streetLightSheet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const script = document.createElement('script');
+  const globalCallbacks = window as unknown as Record<string, unknown>;
+  const timeoutId = window.setTimeout(() => finish(new Error('讀取試算表逾時')), 15000);
+
+  const cleanup = () => {
+    window.clearTimeout(timeoutId);
+    script.remove();
+    delete globalCallbacks[callbackName];
+  };
+  const finish = (error?: Error, rows?: Record<string, string>[]) => {
+    cleanup();
+    if (error) reject(error);
+    else resolve(rows || []);
+  };
+
+  globalCallbacks[callbackName] = (data: GoogleVisualizationResponse) => {
+    try {
+      finish(undefined, toSheetRows(data, fallbackHeaders));
+    } catch (error) {
+      finish(error instanceof Error ? error : new Error('試算表回傳格式不正確'));
+    }
+  };
+  script.onerror = () => finish(new Error('無法讀取試算表資料'));
+  script.src = `${url}&tqx=${encodeURIComponent(`out:json;responseHandler:${callbackName}`)}`;
+  document.head.appendChild(script);
 });
 
 function parseTaiwanDateTime(twStr: string) {
@@ -157,8 +245,12 @@ export default function StreetLightMap({
     async function fetchData() {
       try {
         const [locationRes, repairRes] = await Promise.all([
-          fetch(SHEET_URL).then(res => res.json()),
-          fetch(CHECK_SHEET_URL).then(res => res.json())
+          fetchSheetRows(STREETLIGHT_GVIZ_URL),
+          // This sheet has no header row. Its data schema is A: report time,
+          // B: lamp number, C: fault, H: repair status.
+          fetchSheetRows(REPAIR_GVIZ_URL, [
+            '通報時間', '路燈編號', '故障情形', '', '', '', '', '維修情形'
+          ])
         ]);
 
         const unrepairedSet = new Set<string>();
@@ -166,13 +258,13 @@ export default function StreetLightMap({
         const faultMap = new Map<string, string>();
 
         repairRes.forEach((row: RepairRecord) => {
-          const lampID = row["路燈編號"]?.trim();
-          const reportTimeStr = row["通報時間"]?.trim();
-          const status = (row["維修情形"] || "").trim();
-          const fault = (row["故障情形"] || "").trim();
+          const lampID = normalizeLampId(readSheetValue(row, ['路燈編號', '原路燈號碼']));
+          const reportTimeStr = readSheetValue(row, ['通報時間', '報修時間', '通報日期']);
+          const status = readSheetValue(row, ['維修情形', '查修情形', '維修狀態', '查修狀態']);
+          const fault = readSheetValue(row, ['故障情形', '故障描述', '故障原因']);
 
           if (lampID) {
-            if (status === "未查修") {
+            if (isUnrepairedStatus(status)) {
               unrepairedSet.add(lampID);
               const reportDate = parseTaiwanDateTime(reportTimeStr);
               if (reportDate && !isNaN(reportDate.getTime())) {
@@ -185,15 +277,16 @@ export default function StreetLightMap({
 
         const processedLights: StreetLightData[] = locationRes
           .map((row: StreetLightLocation) => {
-            const id = row["原路燈號碼"]?.trim();
-            const lat = parseFloat(row["緯度Latitude"]);
-            const lng = parseFloat(row["經度Longitude"]);
+            const displayId = readSheetValue(row, ['原路燈號碼', '路燈編號']).trim();
+            const id = normalizeLampId(displayId);
+            const lat = parseFloat(readSheetValue(row, ['緯度Latitude', '緯度', 'Latitude']));
+            const lng = parseFloat(readSheetValue(row, ['經度Longitude', '經度', 'Longitude']));
 
             if (!id || isNaN(lat) || isNaN(lng)) return null;
 
             return {
               ...row,
-              id,
+              id: displayId,
               lat,
               lng,
               isUnrepaired: unrepairedSet.has(id),
@@ -241,10 +334,11 @@ export default function StreetLightMap({
   }, [lights]);
 
   const handleSearch = useMemo(() => (id: string) => {
-    const light = lights.find(l => l.id === id);
+    const searchId = normalizeLampId(id);
+    const light = lights.find(l => normalizeLampId(l.id) === searchId);
     if (light) {
       setTargetLocation([light.lat, light.lng]);
-      setSearchedLightId(id);
+      setSearchedLightId(light.id);
     } else {
       alert("查無此路燈編號！");
       setSearchedLightId(null);
